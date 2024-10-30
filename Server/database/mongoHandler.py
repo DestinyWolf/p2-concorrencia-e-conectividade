@@ -32,3 +32,9 @@ class MongoHandler:
         response = self.__get_collection(group).delete_one(filter)
 
         True if response.deleted_count > 0 else False
+
+    def update_data_by_filter(self, group, filter, data):
+        response = self.__get_collection(group).replace_one(filter, data)
+
+        True if response.matched_count > 0 else False
+
