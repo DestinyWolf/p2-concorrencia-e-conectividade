@@ -12,15 +12,18 @@ class MongoHandler:
     def insert_data(self, data:dict, group:str):
         try:
             self.__get_collection(group).insert_one(data)
-            return True
         except  Exception as e:
             print(f'[DATABASE] Fail to insert data, raise: {str(e)}')
-            return False
+            raise
 
 
     def insert_many_data(self, list_of_data:list, group:str):
-        self.__get_collection(group).insert_many(list_of_data)
-
+        try:
+            self.__get_collection(group).insert_many(list_of_data)
+        except Exception as e:
+            print(f'[DATABASE] Fail to insert data, raise: {str(e)}')
+            raise
+        
     def  get_data_by_filter(self,filter:dict, group:str):
         response = self.__get_collection(group).find(filter)
 

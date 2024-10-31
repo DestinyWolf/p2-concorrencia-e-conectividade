@@ -113,9 +113,9 @@ class Ticket:
             
             all_tickets = db.get_all_itens_in_group(CollectionsName.TICKET.value)
             return all_tickets
-        except FileNotFoundError:
+        except Exception as e:
             print(f'[SERVER] Could not find tickets file')
-            raise
+            raise FileNotFoundError
 ##
 #   @brief: Realiza a adição da instância ao arquivo de tickets
 #
@@ -124,11 +124,15 @@ class Ticket:
 #            JSONDecodeError caso ocorra erros na leitura do arquivo
 ##        
     def save(self):
-        data = {'_id':int(hashlib.md5(self.email.encode('utf-8')).hexdigest(), 16)+int(self.timestamp.timestamp()),'timestamp': self.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'routes': self.routes, 'email':self.email}
-        db = MongoHandler(CollectionsName.CONNECT_STRING.value, CollectionsName.COMPANY.value)
-        db.insert_item_in_group(CollectionsName.TICKET.value, data)
+        try:
+            data = {'_id':int(hashlib.md5(self.email.encode('utf-8')).hexdigest(), 16)+int(self.timestamp.timestamp()),'timestamp': self.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'routes': self.routes, 'email':self.email}
+            db = MongoHandler(CollectionsName.CONNECT_STRING.value, CollectionsName.COMPANY.value)
+            db.insert_item_in_group(CollectionsName.TICKET.value, data)
 
-        return True
+            return True
+        except Exception as e:
+            print(f'[SERVER] Could not save ticket file')
+            raise FileNotFoundError
 
 ##
 #   @brief: Realiza atualização dos atributos da instância por meio dos valores passados no dict

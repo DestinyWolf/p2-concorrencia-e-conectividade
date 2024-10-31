@@ -63,9 +63,9 @@ class UsersData:
             users = db.get_all_itens_in_group(CollectionsName.USER.value)
             return users
         
-        except FileNotFoundError:
+        except Exception as e:
             print(f'[SERVER] Could not find users in database')
-            raise
+            raise FileNotFoundError
     
 ##
 #   @brief: Método atualiza o arquivo de usuários com a nova informação
