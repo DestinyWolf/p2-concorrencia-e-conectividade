@@ -1,7 +1,7 @@
 from utils.database import *
 from threading import Lock
 import networkx as nx
-from mongoHandler import *
+from database.mongoHandler import *
 
 
 class RoutesGraph:
@@ -18,17 +18,19 @@ class RoutesGraph:
 #   @return new_grah - DiGraph carregado do arquivo de grafos do servidor.
 #   Caso contrário, retorna um DiGraph vazio
 ##
-    def __init_graph(self, server_id):
-        db_handler = MongoHandler(connect_string= CollectionsName.CONNECT_STRING.value, companhia=CollectionsName.COMPANY.value)
+    def __init_graph(self, server_name):
+        db_handler = MongoHandler(connect_string= CollectionsName.CONNECT_STRING.value, companhia=server_name)
         new_graph = nx.DiGraph()
         
-        adjacency_dict: dict = db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)[0]
+        adjacency_dict:dict = db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)[0]
+        
+        del adjacency_dict['_id']
 
         if adjacency_dict:
             for node, edges in adjacency_dict.items():
                 for neighbor, attrs in edges.items():
                     self.path_locks[(node, neighbor)] = Lock()
-                    attrs["company"] = {server_id: attrs['globalWeight']}
+                    attrs["company"] = {server_name: attrs['globalWeight']}
                     new_graph.add_edge(node, neighbor, **attrs)
 
         return new_graph
@@ -73,22 +75,30 @@ class RoutesGraph:
             
             with RoutesGraph.graph_lock:
                 shortest_paths:list = list(nx.shortest_simple_paths(self.graph, source=match, target=destination,weight="globalWeight"))
-            
-            return self.match_route_to_company(shortest_paths[:3]) #bug deve retornar as informações do voo
+
+            for path in shortest_paths:
+                weight = sum(self.graph[u][v]['globalWeight'] for u, v in zip(path[:-1], path[1:]))
+                if weight >= 999:
+                    shortest_paths.remove(path)
+                    
+            return self.match_route_to_company(shortest_paths[:3])
         except (nx.NetworkXNoPath, nx.NetworkXError, ValueError) as err:
             return None
 
     def match_route_to_company(self, routes:list):
         matched_routes = []
+
         for route in routes:
             temp = []
-            for i in range(len(route)-1):
-                for company, weight in self.graph[route[i]][route[i+1]]["company"].items():
-                    if weight == 1:
-                        temp.append(([route[i], route[i+1], company]))
-                        break
-
+            for i in range(len(route) - 1):
+                segment = self.graph[route[i]][route[i+1]]
+                company = next((comp for comp, weight in segment["company"].items() if weight == 1), None)
+                if company:
+                    temp.append([route[i], route[i+1], company])
             matched_routes.append(temp)
 
         return matched_routes
-    
+
+from utils.twoPhaseCommit import ServerName
+a = RoutesGraph(ServerName.A.value)
+print(a.search_route('A','B'))
