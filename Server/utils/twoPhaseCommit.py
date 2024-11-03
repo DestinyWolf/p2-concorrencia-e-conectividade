@@ -7,7 +7,7 @@ class TransactionStatus(Enum):
     READY = "READY"
     COMMIT = "COMMITED"
     ABORTED = "ABORTED"
-    ILLEGAL = "ILLEGAL"
+    DONE = "DONE"
 
 class ServerIds(Enum):
     A = 0
@@ -19,7 +19,4 @@ class ServerName(Enum):
     B = 'Server-B'
     C = 'Server-C'
 
-class ServerIP(Enum):
-    A = 'localhost1'
-    B = 'localhost2'
-    C = 'localhost3'
+SERVERIP:dict = {ServerName.A.value: '127.0.0.1', ServerName.B.value: '127.0.0.2', ServerName.C.value: '127.0.0.3'}
