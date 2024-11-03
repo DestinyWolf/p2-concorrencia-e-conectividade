@@ -1,13 +1,14 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, PyMongoError
 
 class MongoHandler:
     def __init__(self, connect_string:str, companhia:str):
         self.connect_string = connect_string
         self.companhia = companhia
-        self.client = MongoClient(connect_string).get_database(companhia)
+        self.client = MongoClient(connect_string)
+        self.db = self.client.get_database(companhia)
 
     def  __get_collection(self, collection_name:str):
-        return self.client.get_collection(collection_name)
+        return self.db.get_collection(collection_name)
     
     def insert_data(self, data:dict, group:str):
         try:
@@ -46,4 +47,15 @@ class MongoHandler:
         response = self.__get_collection(group).replace_one(filter, data)
 
         return True if response.matched_count > 0 else False
+    
+    def update_many(self, group, data_list):
+        try:
+            with self.client.start_session() as session:
+                for data in data_list:
+                    self.__get_collection(group).replace_one(data[0], data[1], session=session)
+
+
+            return True
+        except PyMongoError as e:
+            return False
 
