@@ -4,14 +4,13 @@ import logging as log
 
 
 class SocketManager():
-    def __init__(self, host_port=8000):
-        self.host_ip =  socket.gethostbyname(socket.gethostname())
+    def __init__(self, host_ip:str=None, host_port:int=8000):
+        self.host_ip = socket.gethostbyname(socket.gethostname()) if host_ip is None else host_ip
         self.host_port = host_port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) #Encerra o socket caso o programa seja encerrado
-        log.basicConfig(filename="sockerManagement.log", filemode="a+", level=log.INFO)
+        log.basicConfig(filename="socketManagement.log", filemode="a+", level=log.INFO)
         self.logger:log.Logger = log.getLogger(f"{type(self).__name__} - ({self.host_ip}, {self.host_port})")
-        self.logger.info("pandaaasdf")
         
     ##
     #   @brief: Método utilizado para o estabelecimento do canal de conexão (inicialização do socket)
@@ -34,6 +33,3 @@ class SocketManager():
             self.logger.warning("Server failed to initialize socket!, Please check if the socket was already initialized", exc_info=True)
 
         return status
-    
-if __name__ == "__main__":
-    SocketManager()
