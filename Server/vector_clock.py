@@ -2,10 +2,9 @@ from utils.twoPhaseCommit import *
 from threading import Lock
 
 class VectorClock():
-    def __init__(self, node_id) -> None:
+    def __init__(self) -> None:
         self.lock = Lock()
         self.clock = [0 for i in range(NODES_COUNT)]
-        self.node_id = node_id
 
     def reset_clock(self) -> None:
         with self.lock:
@@ -17,9 +16,9 @@ class VectorClock():
         
         return self.clock
 
-    def increment_clock(self) -> list[int, int, int]:
+    def increment_clock(self, index:int) -> list[int, int, int]:
         with self.lock:
-            self.clock[self.node_id] += 1
+            self.clock[index] += 1
 
         return self.clock
 
