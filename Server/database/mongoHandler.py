@@ -52,7 +52,8 @@ class MongoHandler:
         try:
             with self.client.start_session() as session:
                 for data in data_list:
-                    self.update_data_by_filter(group, data[0], data[1])
+                    self.__get_collection(group).replace_one(data[0], data[1], session=session)
+
 
             return True
         except PyMongoError as e:
