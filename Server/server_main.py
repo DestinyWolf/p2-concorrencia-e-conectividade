@@ -46,9 +46,9 @@ def get_graph():
     global node_info
     return jsonify(node_info.db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)), 200
 
-'''
-@app.route('/firstphase')
-def  first_phase():
+
+@app.route('/newtransaction')
+def  new_transaction():
     #1 fase do 2pc
     rq = request.get_json()
 
@@ -60,18 +60,18 @@ def  first_phase():
 
     return {'id':'transid','msg':'accept'}, 200 if 'algo' else {'id':'transid','msg':'denied'}, 200
     
-@app.route('/secondphase')
-def  second_phase():
+@app.route('/commitdecision')
+def  commit_decision():
     #2 fase do 2pc
     rq = request.get_json()
     trans_id = rq['id']
     msg = rq['msg']
 
-    thread pool
+    # thread pool
     return {'msg':'ok'}, 200 if 'algo' else {'msg':'not ok'}, 200
 
-@app.route('/notfinish')
-def not_finish():
+@app.route('/notfinished')
+def not_finished():
     rq = request.get_json()
     whoisme = rq['whoIsMe']
     trans_id = rq['id']
@@ -91,18 +91,6 @@ def update_route():
     #camila se vira pra implementar
 
     return {'msg':'success'}, 200
-
-# funcao de inicializacao do servidor que faz o envio dos rq informando um novo servidor
-payload = {'name':'nome da companhia',  'ip':cm.HOST}
-for (name, ip) in serveriplist:
-    rs = requests.post(f'http://{ip}/newserver', data=payload).json()
-
-    #mudar o tratamento depois apenas para testes
-    if rs['msg'] == 'fail':
-        print(f'falha ao se comunicar com o servidor:{name}')
-'''
-
-
 
 def process_client(client: ClientHandler):
     global requests_queue, node_info, tc
