@@ -1,8 +1,8 @@
 from Transaction import *
 
 class TransactionProtocolState(Transaction):
-    def __init__(self, coordinator_ip:ServerIds=None, transaction_id:str=None, participants=set(), intentions={}):
-        super().__init__(coordinator_ip, transaction_id, participants, intentions)
+    def __init__(self, coordinator_ip:ServerIds=None, transaction_id:str=None, participants=set(), intentions={}, timestamp = None):
+        super().__init__(coordinator_ip, transaction_id, participants, intentions, timestamp)
         self.preparedToCommit = {}
         self.done = {}
 
@@ -12,20 +12,13 @@ class TransactionProtocolState(Transaction):
         self.participants = restored_data['participants']
         self.intentions = restored_data['intentions']
         self.status = TransactionStatus(restored_data['status'])
+        self.timestamp = restored_data['timestamp']
         self.preparedToCommit = restored_data['preparedToCommit']
         self.done = restored_data['done']
 
 
     def to_db_entry(self) -> dict:
         return {'_id': self.transaction_id, 'coordinator': self.coordinator, 'participants': list(self.participants),
-                'intentions': self.intentions, 'status': self.status.value, 'preparedToCommit': self.preparedToCommit,
+                'intentions': self.intentions, 'status': self.status.value, 'timestamp': self.timestamp, 'preparedToCommit': self.preparedToCommit,
                 'done': self.done}
 
-        
-
-
-    
-
-        
-
-    
