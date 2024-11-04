@@ -14,11 +14,10 @@ class TransationCoordinator(TwoPhaseCommitNode):
     
     def setup_transaction(self, routes:list[list[str,str,str]], client_ip:str) -> TransactionProtocolState:
         timestamp = self.clock.increment_clock(self.host_id.value)
-
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
 
-        transaction_state  = TransactionProtocolState(self.host_name.value, transaction_id)
+        transaction_state  = TransactionProtocolState(self.host_name.value, transaction_id, timestamp)
         
         for route in routes:
             participant:str = route[2]
@@ -39,8 +38,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
         return transaction_state
 
 
-    def prepare_transaction(self, routes:list[list[str,str,str]], client_ip:str) -> str:
-        transaction = self.setup_transaction(routes, client_ip)
+    def prepare_transaction(self, transaction: TransactionProtocolState) -> str:
         
         self.db_handler.insert_data(transaction.to_db_entry(), CollectionsName.LOG.value)
         self.logger.info(f'Transaction {transaction.transaction_id} initiated')
@@ -50,7 +48,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
 
         self.logger.info(f"{self.host_name} send PREPARE request to participants of transaction {transaction.transaction_id}")
         
-        if all(self.prepared_to_commit.values()):
+        if all(transaction.preparedToCommit.values()):
             transaction.status = TransactionStatus.COMMIT
             self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
             self.logger.info(f'Transaction {transaction.transaction_id} COMMITED')
@@ -63,6 +61,9 @@ class TransationCoordinator(TwoPhaseCommitNode):
             #send abort msg
             #if coordinator is a participant also, release locks
 
+        transaction.status = TransactionStatus.DONE
+        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
+        self.logger.info(f'Transaction {transaction.transaction_id} DONE')
         return transaction.status.value
    
     def handle_ready_RPC(self, transaction_id:str, server_name:str, ready:bool):
@@ -78,6 +79,9 @@ class TransationCoordinator(TwoPhaseCommitNode):
         elif transaction.status == TransactionStatus.ABORTED:
             self.logger.info(f"Received READY message from {server_name} for aborted transaction {transaction_id}")
             #send abort msg
+        elif transaction.status == TransactionStatus.DONE:
+            self.logger.info(f"Received READY message from {server_name} for done transaction {transaction_id}")
+            #send done msg
 
     def handle_done_RPC(self, transaction_id, server_name):
         transaction = TransactionProtocolState()
@@ -90,7 +94,6 @@ class TransationCoordinator(TwoPhaseCommitNode):
             self.logger.info(f"{transaction_id} -> DONE. Deleting transaction")
             self.db_handler.delete_data_by_filter({'_id': transaction_id}, CollectionsName.LOG.value)
         
-
 
 
 
