@@ -5,7 +5,7 @@ from utils.twoPhaseCommit import *
 from utils.database import *
 from utils.graph import *
 from vector_clock import *
-from database.mongoHandler import *
+from mongoHandler import *
 from threading import Lock
 
 
@@ -17,8 +17,7 @@ class TwoPhaseCommitNode():
     host_name:ServerName = None
     
     clock:VectorClock = VectorClock()
-    clock_lock = Lock()
-
+    
     graph: RoutesGraph = None
 
 
