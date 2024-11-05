@@ -49,7 +49,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
                 if participant != self.host_name.value:
                     response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/newtransaction', json=transaction.to_request_msg(participant), headers={"Content-Type": "application/json"}, timeout=30)
                     transaction.preparedToCommit[participant] = True if response.json().get('msg') == TransactionStatus.READY.value else False
-            except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
+            except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                 transaction.preparedToCommit[participant] = False 
         
         self.logger.info(f"{self.host_name} send PREPARE request to participants of transaction {transaction.transaction_id}")
@@ -89,7 +89,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
                 if participant != self.host_name.value:
                     response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/committransaction', json={'transaction_id': transaction.transaction_id, 'decision': transaction.status.value}, headers={"Content-Type": "application/json"}, timeout=30)
                     transaction.done[participant] = True if response.json().get('msg')== TransactionStatus.DONE.value else False
-            except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
+            except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                 pass
 
         
@@ -118,7 +118,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
                     if peer != self.host_name.value:
                         try:
                             response = requests.post(f'http://{ip}:{SERVERPORT[peer]}/updateroute', json={'whoIsMe': self.host_name.value, 'routeToUpdate': route, 'msg':999}, headers={"Content-Type": "application/json"})
-                        except Exception:
+                        except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                             continue
             
             attrs = self.graph.graph[u][v].copy()
