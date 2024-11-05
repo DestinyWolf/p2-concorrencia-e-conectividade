@@ -53,31 +53,28 @@ class TransationCoordinator(TwoPhaseCommitNode):
                 transaction.preparedToCommit[participant] = False 
         
         self.logger.info(f"{self.host_name} send PREPARE request to participants of transaction {transaction.transaction_id}")
-        
         if self.host_name.value in transaction.participants:
             for route in transaction.intentions[self.host_name.value]: #locking routes
-                self.graph.path_locks.get(route).acquire()
-        
+                self.graph.path_locks[route].acquire()
+
             for route in transaction.intentions[self.host_name.value]: #checking if there are sits available
                 if self.graph.graph[route[0]][route[1]]['sits'] == 0:
                     transaction.preparedToCommit[self.host_name.value] = False
                     break
 
-            if transaction.preparedToCommit[self.host_name.value] is not None:       
-                for route in transaction.intentions: #unlocking routes
-                    self.graph.path_locks.get(route).release()
             else:
                 transaction.preparedToCommit[self.host_name.value] = True
         
-
+        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry(), )
 
         if all(transaction.preparedToCommit.values()):
             transaction.status = TransactionStatus.COMMIT
             self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
             self.logger.info(f'Transaction {transaction.transaction_id} COMMITED')
             
-            if self.host_id.value in transaction.intentions:
+            if self.host_name.value in transaction.participants:
                 self.__commit_local_transaction(transaction)
+                transaction.done[self.host_name.value] = True
                 
         else:
             transaction.status = TransactionStatus.ABORTED
@@ -85,7 +82,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
             self.logger.warning(f'Transaction {transaction.transaction_id} ABORTED')
             if self.host_name.value in transaction.participants:           
                 for route in transaction.intentions[self.host_name.value]: #unlocking routes
-                    self.graph.path_locks.get(route).release()
+                    self.graph.path_locks[route].release()
 
         try:
             if participant != self.host_name.value:
@@ -95,9 +92,13 @@ class TransationCoordinator(TwoPhaseCommitNode):
             pass
 
         
-        transaction.status = TransactionStatus.DONE
+        if transaction.status == TransactionStatus.COMMIT:
+            transaction.status = TransactionStatus.DONE
+        
+        
         self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
-        self.logger.info(f'Transaction {transaction.transaction_id} DONE')
+        self.logger.info(f'Transaction {transaction.transaction_id} {transaction.status.value}')
+        
         return transaction.status.value
     
 

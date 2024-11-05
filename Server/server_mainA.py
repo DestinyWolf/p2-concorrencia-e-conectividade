@@ -352,16 +352,15 @@ def new_server_pool():
                     response = requests.get(f'http://{SERVERIP[server]}:{SERVERPORT[server]}/getgraph', timeout=3)
                     node_info.graph.merge_graph(response.json(), server)
                     node_info.logger.info(f'New connection with {server}. Routes merged!')
-                    print(node_info.graph.graph.adj)
 
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                 
                 if up_links[server] and merged[server]:
                     node_info.graph.unmerge_graph(server)
                     merged[server] = False
+                    node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
                 up_links[server] = False
-                node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
-                print(node_info.graph.graph.adj)
+                
 
         sleep(3)
 
@@ -379,7 +378,7 @@ if __name__ == "__main__":
     try:
         #socket_listener_thread = Thread(target=socket_client_handler)
         batch_executor_thread = Thread(target=batch_executor)
-        new_server_connections = Thread(target=new_server_pool)
+        new_server_connections = Thread(target=new_server_pool, daemon=True)
         
 
         #socket_listener_thread.start()
