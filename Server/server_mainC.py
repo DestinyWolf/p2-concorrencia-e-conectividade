@@ -19,7 +19,7 @@ from utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 
-node_info = TwoPhaseCommitNode(ServerIds.B, ServerName.B)
+node_info = TwoPhaseCommitNode(ServerIds.C, ServerName.C)
 tc = TransationCoordinator(node_info.host_id, node_info.host_name)
 tm = TransactionManager(node_info.host_id, node_info.host_name)
 
@@ -413,7 +413,7 @@ if __name__ == "__main__":
         new_server_connections.start()
 
         
-        app.run(host=SERVERIP[ServerName.B.value],  port=SERVERPORT[ServerName.B.value], threaded=True)
+        app.run(host=SERVERIP[ServerName.C.value],  port=SERVERPORT[ServerName.C.value], threaded=True)
     except KeyboardInterrupt:    
         exit(-1)
     finally:

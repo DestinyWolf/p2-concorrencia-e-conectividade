@@ -284,7 +284,31 @@ def socket_client_handler():
             except KeyboardInterrupt:
                 return -1
 
+def batch_executor():
+    global node_info, tc, requests_queue, batch_execution_results
 
+    with ThreadPoolExecutor(max_workers=1) as exec:
+        while True:
+            with queue_lock:
+                if len(requests_queue) == 0:
+                    continue
+                heapify(requests_queue)
+                keys, data = heappop(requests_queue)
+                transaction, server, timestamp = keys
+                event, task = data
+
+                future = exec.submit(task, transaction)
+
+                wait([future])
+
+                result = future.result()
+                with results_lock:
+                    batch_execution_results[transaction.transaction_id] = result
+                
+                event.set()
+
+
+'''
 def batch_executor():
     global node_info, tc, requests_queue, batch_execution_results
 
@@ -336,7 +360,7 @@ def batch_executor():
                     batch_execution_results[futures[future][0]] = result
                 futures.get(future)[1].set()            
 
-
+'''
 def new_server_pool():
     global node_info
     up_links = {server: False for server in SERVERIP if server!=node_info.host_name.value}
