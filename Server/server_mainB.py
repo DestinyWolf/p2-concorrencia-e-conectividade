@@ -4,7 +4,7 @@ from concurrent.futures import *
 from database.mongoHandler import *
 from utils.database import CollectionsName
 from utils.twoPhaseCommit import *
-from Server.ClientHandlerClass import *
+from ClientHandlerClass import *
 from TwoPhaseCommitNode import *
 from TransactionCoordinatorNode import *
 from TransactionManagerNode import *
@@ -19,7 +19,7 @@ from utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 
-node_info = TwoPhaseCommitNode(ServerIds.A, ServerName.A)
+node_info = TwoPhaseCommitNode(ServerIds.B, ServerName.B)
 tc = TransationCoordinator(node_info.host_id, node_info.host_name)
 tm = TransactionManager(node_info.host_id, node_info.host_name)
 
@@ -35,8 +35,11 @@ def home():
     return {'msg':'working'}
 
 @app.route('/serverstatus')
-def new_server():    
-    return {'msg':'connected'}, 200
+def new_server(): 
+    try:   
+        return {'msg':'connected'}, 200
+    except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
+        pass
 
 
 #endpoint para a lista de adjacencias, retorna toda a lista de adjacencias de uma companhia
@@ -44,34 +47,80 @@ def new_server():
 @app.route('/getgraph')
 def get_graph():
     global node_info
-    return jsonify(node_info.db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)), 200
+    try:
+        return jsonify(node_info.db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)), 200
+    except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
+        pass
 
 
-@app.route('/newtransaction')
+@app.route('/newtransaction', methods=['POST'])
 def  new_transaction():
-    #1 fase do 2pc
-    rq = request.get_json()
-
-    trans_id = rq['id']
-    data = rq['data']
-    time = rq['time']
-
-    #thread pool
-
-    return {'id':'transid','msg':'accept'}, 200 if 'algo' else {'id':'transid','msg':'denied'}, 200
+    global tm, requests_queue, queue_lock, node_info
     
-@app.route('/commitdecision')
-def  commit_decision():
-    #2 fase do 2pc
     rq = request.get_json()
-    trans_id = rq['id']
-    msg = rq['msg']
+    print (f'{rq}')
+    coordinator = rq.pop('coordinator')
+    id = rq.pop('transaction_id')
+    timestamp = rq.pop('timestamp')
+    participants = set(rq.pop('participants'))
+    intentions = [tuple(i) for i in rq.pop('intentions')]
 
-    # thread pool
-    return {'msg':'ok'}, 200 if 'algo' else {'msg':'not ok'}, 200
+    transaction = Transaction(coordinator, id, participants,intentions, timestamp)
 
+
+    finish_event = Event()
+
+    
+    heap_entry = ((transaction,coordinator, datetime.now()), (finish_event, tm.handle_prepare_RPC))
+    
+    with queue_lock:
+        heappush(requests_queue, heap_entry)
+        
+    finish_event.wait()
+
+    with results_lock:
+        result = batch_execution_results.pop(transaction.transaction_id)
+
+    try:
+        return {'id':transaction.transaction_id,'msg': result}, 200
+    except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
+        pass
+    
+
+   
+@app.route('/committransaction', methods=['POST'])
+def  commit_transaction():
+    global tm, requests_queue, queue_lock, node_info
+    
+    rq = request.get_json()
+    print (f'{rq}')
+    id = rq.pop('transaction_id')
+    decision = rq.pop('decision')
+    
+
+    transaction:Transaction = Transaction()
+    transaction.load_transaction_from_db(id, node_info.db_handler)
+    transaction.decision = decision
+    finish_event = Event()
+
+    task = tm.handle_commit_RPC if decision == TransactionStatus.COMMIT.value else tm.handle_abort_RPC
+    heap_entry = ((transaction,transaction.coordinator, datetime.now()), (finish_event, task))
+    
+    with queue_lock:
+        heappush(requests_queue, heap_entry)
+        
+    finish_event.wait()
+
+    with results_lock:
+        result = batch_execution_results.pop(transaction.transaction_id)
+        print(result)
+    try:
+        return {'id':transaction.transaction_id,'msg': result}, 200
+    except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
+        pass
+'''
 @app.route('/notfinished')
-def not_finished():
+def not_finish():
     rq = request.get_json()
     whoisme = rq['whoIsMe']
     trans_id = rq['id']
@@ -81,16 +130,39 @@ def not_finished():
 
     return {'id':'transid', msg:'do'},200 if 'algo' else  {'id':'transid', 'msg':'not ok'}, 200
 
-@app.route('/updateroute')
+
+'''
+
+@app.route('/updateroute', methods=['POST'])
 def update_route():
+    global node_info
+
     rq = request.get_json()
+
     whoisme = rq['whoIsMe']
-    route = rq['routeToUpdate']
+    route= tuple(rq['routeToUpdate'])
     msg = rq['msg']
+    
+    update_route(route, whoisme, msg)
+    try:
+        return {'msg':'success'}, 200
+    except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
+        pass
 
-    #camila se vira pra implementar
+def update_route(route, peer, msg):
+    global node_info
+    u,v=route
+    try:
+        with node_info.graph.path_locks[route]:
+            node_info.graph.graph[u][v]['company'][peer] = msg
+            node_info.graph.update_global_edge_weight(route)
+    except KeyError:
+        node_info.graph.graph[u][v]['company'][peer] = msg
+        node_info.graph.update_global_edge_weight(route)
+        
+    
 
-    return {'msg':'success'}, 200
+
 
 def process_client(client: ClientHandler):
     global requests_queue, node_info, tc
@@ -221,7 +293,6 @@ def batch_executor():
     
     with ThreadPoolExecutor(max_workers=5) as exec:    
         while True:
-            sleep(2)
             with queue_lock:
 
                 if len(requests_queue) == 0:
@@ -232,10 +303,11 @@ def batch_executor():
                 batch = []
                 routes_in_batch = set()
 
+                
                 for i in range(len(requests_queue)):
                     
                     keys, data = heappop(requests_queue)
-                    transaction, server = keys
+                    transaction, server, timestamp = keys
                     event, task = data
                 
                     if transaction.__class__ == Transaction and routes_in_batch.isdisjoint(transaction.intentions):
@@ -270,21 +342,27 @@ def batch_executor():
 def new_server_pool():
     global node_info
     up_links = {server: False for server in SERVERIP if server!=node_info.host_name.value}
-
+    merged = {server: False for server in SERVERIP if server!=node_info.host_name.value}
     while True:   
         for server, status in up_links.items():
             try:
-                response = requests.get('http://'+SERVERIP[server]+':5000/serverstatus', timeout=3)
+                response = requests.get(f'http://{SERVERIP[server]}:{SERVERPORT[server]}/serverstatus', timeout=3)
 
                 if response.status_code == 200 and not status:
                     up_links.update({server: True})
-                    response = requests.get('http://'+SERVERIP[server]+':5000/getgraph', timeout=3)
-                    #node_info.graph.merge_graph(response.json(), server)  bug: refactor merge_graph
+                    response = requests.get(f'http://{SERVERIP[server]}:{SERVERPORT[server]}/getgraph', timeout=3)
+                    node_info.graph.merge_graph(response.json(), server)
+                    merged[server] = True
                     node_info.logger.info(f'New connection with {server}. Routes merged!')
+                    print(node_info.graph.graph.adj)
 
-            except (requests.Timeout, requests.ConnectionError):
+            except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
+                if up_links[server] and merged[server]:
+                    node_info.graph.unmerge_graph(server)
+                    merged[server] = False
                 up_links[server] = False
-                #unmerge graph
+                node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
+                print(node_info.graph.graph.adj)
 
         sleep(3)
 
@@ -296,32 +374,34 @@ def new_server_pool():
 
 
 
-'''
+
 
 if __name__ == "__main__":
     try:
         #socket_listener_thread = Thread(target=socket_client_handler)
-        #batch_executor_thread = Thread(target=batch_executor)
+        batch_executor_thread = Thread(target=batch_executor)
         new_server_connections = Thread(target=new_server_pool)
         
 
         #socket_listener_thread.start()
-        #batch_executor_thread.start()
+        batch_executor_thread.start()
         new_server_connections.start()
 
         
-        app.run(host=SERVERIP[ServerName.A.value],  port=5001, debug=True, threaded=True)
+        app.run(host=SERVERIP[ServerName.B.value],  port=SERVERPORT[ServerName.B.value], threaded=True)
     except KeyboardInterrupt:    
-        pass
+        exit(-1)
     finally:
         #socket_listener_thread.join()
-        #batch_executor_thread.join()
+        batch_executor_thread.join()
+        pass
+
 
 '''
 
 a = Transaction(transaction_id='000', intentions=[('A','C'),('A','B')],timestamp=[0,0,0])
 b = Transaction(transaction_id='001', intentions=[('A','D'), ('A','E')],timestamp=[0,0,1])
-c = Transaction(transaction_id='002', intentions= [('A','F')],timestamp=[0,1,1])
+c = Transaction(transaction_id='002', intentions= [('A','D')],timestamp=[0,1,1])
 a2 = Transaction(transaction_id='003', intentions=[('B','C'),('A','D1')],timestamp=[1,1,1])
 b2 = Transaction(transaction_id='004', intentions=[('A','0D'), ('A','E1')],timestamp=[2,1,1])
 c2 = Transaction(transaction_id='005', intentions= [('A','D2')],timestamp=[2,2,1])
@@ -381,5 +461,5 @@ q3.join()
 w3.join()
 e3.join()
 
-
+'''
 
