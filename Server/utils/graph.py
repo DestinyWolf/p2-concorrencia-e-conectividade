@@ -40,6 +40,7 @@ class RoutesGraph:
     def unmerge_graph(self, peers_id):
         with RoutesGraph.graph_lock:
             remove_edges = []
+            possible_remove_nodes = set()
             for edge in self.graph.edges:
                 u,v = edge
                 self.graph[u][v]['company'].pop(peers_id, None)
@@ -48,14 +49,17 @@ class RoutesGraph:
                 else:
                     if edge not in self.path_locks:
                         remove_edges.append(edge)
+                        possible_remove_nodes.add(u)
+                        possible_remove_nodes.add(v)
             
-            for edge in remove_edges:
-                u, v = edge
-                self.graph.remove_edge(u,v)
-                if not self.graph[u] and u not in self.destinations:
-                    self.graph.remove_node(u)
-                if not self.graph[v] and v not in self.destinations:
-                    self.graph.remove_node(v)   
+            
+            self.graph.remove_edges_from(remove_edges)
+            
+            for node in possible_remove_nodes:
+                if not self.graph[node] and (node not in self.destinations):
+                    self.graph.remove_node(node)
+          
+            
                     
 
          
