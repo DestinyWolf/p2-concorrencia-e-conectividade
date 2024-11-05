@@ -378,11 +378,12 @@ def new_server_pool():
                     up_links.update({server: True})
                     response = requests.get(f'http://{SERVERIP[server]}:{SERVERPORT[server]}/getgraph', timeout=3)
                     node_info.graph.merge_graph(response.json(), server)
+                    merged.update({server: True})
                     node_info.logger.info(f'New connection with {server}. Routes merged!')
 
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                 
-                if up_links[server] and merged[server]:
+                if merged[server]:
                     node_info.graph.unmerge_graph(server)
                     merged[server] = False
                     node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
