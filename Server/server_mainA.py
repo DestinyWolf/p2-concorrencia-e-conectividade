@@ -177,12 +177,12 @@ def process_client(client: ClientHandler):
 
         # Autenticação do token
         if type != "CREATE_USER" and type != "GETTOKEN":
-            client.auth_token(request.client_token)
+            client.auth_token(node_info.db_handler,request.client_token)
         
         #Seleção do tratamento adequadoda requisição
         match type:
             case "CREATE_USER":
-                response.data = client.create_user(request.rq_data) # type: ignore
+                response.data = client.create_user(request.rq_data, node_info.db_handler) # type: ignore
                 if response.data:
                     response.status = ConstantsManagement.OK
                     response.rs_type = ConstantsManagement.TOKEN_TYPE
@@ -190,7 +190,7 @@ def process_client(client: ClientHandler):
                     response.status = ConstantsManagement.OPERATION_FAILED
                     response.rs_type = ConstantsManagement.NO_DATA_TYPE
             case "GETTOKEN":
-                response.data = client.get_token(request.rq_data) # type: ignore
+                response.data = client.get_token(request.rq_data, node_info.db_handler) # type: ignore
                 response.status = ConstantsManagement.OK
                 response.rs_type = ConstantsManagement.TOKEN_TYPE
             
@@ -232,7 +232,7 @@ def process_client(client: ClientHandler):
                     response.data = None
             
             case "GETTICKETS":
-                response.data = client.get_tickets(request.client_token)
+                response.data = client.get_tickets(request.client_token, node_info.db_handler)
 
                 if response.data:
                     response.status = ConstantsManagement.OK
