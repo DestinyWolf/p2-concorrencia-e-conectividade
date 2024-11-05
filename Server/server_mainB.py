@@ -113,7 +113,6 @@ def  commit_transaction():
 
     with results_lock:
         result = batch_execution_results.pop(transaction.transaction_id)
-        print(result)
     try:
         return {'id':transaction.transaction_id,'msg': result}, 200
     except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
@@ -303,7 +302,6 @@ def batch_executor():
                 batch = []
                 routes_in_batch = set()
 
-                
                 for i in range(len(requests_queue)):
                     
                     keys, data = heappop(requests_queue)
@@ -343,6 +341,7 @@ def new_server_pool():
     global node_info
     up_links = {server: False for server in SERVERIP if server!=node_info.host_name.value}
     merged = {server: False for server in SERVERIP if server!=node_info.host_name.value}
+
     while True:   
         for server, status in up_links.items():
             try:
@@ -352,17 +351,16 @@ def new_server_pool():
                     up_links.update({server: True})
                     response = requests.get(f'http://{SERVERIP[server]}:{SERVERPORT[server]}/getgraph', timeout=3)
                     node_info.graph.merge_graph(response.json(), server)
-                    merged[server] = True
                     node_info.logger.info(f'New connection with {server}. Routes merged!')
-                    print(node_info.graph.graph.adj)
 
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
+                
                 if up_links[server] and merged[server]:
                     node_info.graph.unmerge_graph(server)
                     merged[server] = False
+                    node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
                 up_links[server] = False
-                node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
-                print(node_info.graph.graph.adj)
+                
 
         sleep(3)
 
@@ -380,7 +378,7 @@ if __name__ == "__main__":
     try:
         #socket_listener_thread = Thread(target=socket_client_handler)
         batch_executor_thread = Thread(target=batch_executor)
-        new_server_connections = Thread(target=new_server_pool)
+        new_server_connections = Thread(target=new_server_pool, daemon=True)
         
 
         #socket_listener_thread.start()

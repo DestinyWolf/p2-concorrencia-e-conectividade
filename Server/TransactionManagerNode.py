@@ -62,7 +62,7 @@ class TransactionManager(TwoPhaseCommitNode):
                     for peer, ip in SERVERIP.items():
                         if peer != self.host_name.value:
                             try:
-                                response = requests.post('http://'+ip+':5001/updateroute', json={'whoIsMe': self.host_name.value, 'routeToUpdate': route, 'msg':999}, headers={"Content-Type": "application/json"})
+                                response = requests.post(f'http://{ip}:{SERVERPORT[peer]}/updateroute', json={'whoIsMe': self.host_name.value, 'routeToUpdate': route, 'msg':999}, headers={"Content-Type": "application/json"})
                             except Exception:
                                 continue
                 
@@ -100,3 +100,13 @@ class TransactionManager(TwoPhaseCommitNode):
         return recovered_transaction.status.value
 
 
+
+'''
+tm = TransactionManager(ServerIds.A, ServerName.A)
+tm.handle_prepare_RPC(Transaction('Server-B', 'd85ca4b50ad9222414037776c90238f881890e878c94ad2d6aa6f353b81c0a', {'Server-A'},[('A','C'),('C','B')]))
+tm.handle_commit_RPC('d85ca4b50ad9222414037776c90238f881890e878c94ad2d6aa6f353b81c0a')
+res = tm.handle_abort_RPC('d85ca4b50ad9222414037776c90238f881890e878c94ad2d6aa6f353b81c0a')
+
+print(res)
+
+'''

@@ -47,7 +47,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
         for participant in transaction.participants:
             try:
                 if participant != self.host_name.value:
-                    response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/newtransaction', json=transaction.to_request_msg('Server-B'), headers={"Content-Type": "application/json"}, timeout=30)
+                    response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/newtransaction', json=transaction.to_request_msg(participant), headers={"Content-Type": "application/json"}, timeout=30)
                     transaction.preparedToCommit[participant] = True if response.json().get('msg') == TransactionStatus.READY.value else False
             except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
                 transaction.preparedToCommit[participant] = False 
