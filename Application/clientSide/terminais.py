@@ -6,7 +6,7 @@ from Client import requests
 ip = ''
 email = 'panda'
 match = 'A'
-destination = 'C'
+destination = 'D'
 
 client = ClientSockClass.ClientSocket(ip)
 (status, dados) = controller.connect(email, client)
@@ -21,4 +21,3 @@ if status == requests.ConstantsManagement.OK.value:
             print('não foi possivel realizar a compra')
             exit(0)
 
-print(status)
