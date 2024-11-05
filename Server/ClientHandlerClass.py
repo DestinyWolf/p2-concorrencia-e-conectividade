@@ -1,9 +1,9 @@
 from hashlib import sha256
-from utils.database import *
-from utils.socketCommunicationProtocol import *
+from Server.utils.database import *
+from Server.utils.socketCommunicationProtocol import *
 import socket
-from utils.customExceptions import InvalidTokenException
-from database.mongoHandler import *
+from Server.utils.customExceptions import InvalidTokenException
+from Server.database.mongoHandler import *
 
 
 ##
@@ -67,9 +67,6 @@ class ClientHandler:
 #   @raises: FileNotFound caso o arquivo de usuários não seja encontrado
 #            
 ##
-
-    def buy_routes(self, node_info, token:str, routes:list[tuple[str,str]]):
-        raise NotImplementedError()
     
 
     ##
@@ -142,6 +139,7 @@ class ClientHandler:
         
  
         
+a = ClientHandler()
 
     
     

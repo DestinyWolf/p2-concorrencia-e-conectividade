@@ -1,21 +1,21 @@
-from SocketManagement import *
+from Server.SocketManagement import *
 from threading import *
 from concurrent.futures import *
-from database.mongoHandler import *
-from utils.database import CollectionsName
-from utils.twoPhaseCommit import *
-from ClientHandlerClass import *
-from TwoPhaseCommitNode import *
-from TransactionCoordinatorNode import *
-from TransactionManagerNode import *
-from utils.socketCommunicationProtocol import *
+from Server.database.mongoHandler import *
+from Server.utils.database import CollectionsName
+from Server.utils.twoPhaseCommit import *
+from Server.ClientHandlerClass import *
+from Server.TwoPhaseCommitNode import *
+from Server.TransactionCoordinatorNode import *
+from Server.TransactionManagerNode import *
+from Server.utils.socketCommunicationProtocol import *
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from time import sleep
 from datetime import *
 from heapq import *
 import requests
-from utils.customExceptions import *
+from Server.utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 

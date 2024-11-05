@@ -1,4 +1,4 @@
-from Transaction import *
+from Server.Transaction import *
 import json
 
 class TransactionProtocolState(Transaction):

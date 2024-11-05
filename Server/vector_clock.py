@@ -1,4 +1,4 @@
-from utils.twoPhaseCommit import *
+from Server.utils.twoPhaseCommit import *
 from threading import Lock
 
 class VectorClock():

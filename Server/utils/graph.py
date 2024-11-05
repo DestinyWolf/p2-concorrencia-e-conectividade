@@ -1,7 +1,7 @@
-from utils.database import *
+from Server.utils.database import *
 from threading import Lock
 import networkx as nx
-from database.mongoHandler import *
+from Server.database.mongoHandler import *
 
 
 class RoutesGraph:

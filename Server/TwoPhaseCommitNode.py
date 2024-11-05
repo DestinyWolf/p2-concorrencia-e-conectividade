@@ -1,11 +1,11 @@
 
 from  concurrent.futures import *
 import logging as log
-from utils.twoPhaseCommit import *
-from utils.database import *
-from utils.graph import *
-from vector_clock import *
-from database.mongoHandler import *
+from Server.utils.twoPhaseCommit import *
+from Server.utils.database import *
+from Server.utils.graph import *
+from Server.vector_clock import *
+from Server.database.mongoHandler import *
 from threading import Lock
 
 

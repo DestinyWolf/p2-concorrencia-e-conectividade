@@ -1,21 +1,21 @@
-from SocketManagement import *
+from Server.SocketManagement import *
 from threading import *
 from concurrent.futures import *
-from database.mongoHandler import *
-from utils.database import CollectionsName
-from utils.twoPhaseCommit import *
-from ClientHandlerClass import *
-from TwoPhaseCommitNode import *
-from TransactionCoordinatorNode import *
-from TransactionManagerNode import *
-from utils.socketCommunicationProtocol import *
+from Server.database.mongoHandler import *
+from Server.utils.database import CollectionsName
+from Server.utils.twoPhaseCommit import *
+from Server.ClientHandlerClass import *
+from Server.TwoPhaseCommitNode import *
+from Server.TransactionCoordinatorNode import *
+from Server.TransactionManagerNode import *
+from Server.utils.socketCommunicationProtocol import *
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from time import sleep
 from datetime import *
 from heapq import *
 import requests
-from utils.customExceptions import *
+from Server.utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 
@@ -177,12 +177,12 @@ def process_client(client: ClientHandler):
 
         # Autenticação do token
         if type != "CREATE_USER" and type != "GETTOKEN":
-            client.auth_token(request.client_token)
+            client.auth_token(node_info.db_handler,request.client_token)
         
         #Seleção do tratamento adequadoda requisição
         match type:
             case "CREATE_USER":
-                response.data = client.create_user(request.rq_data) # type: ignore
+                response.data = client.create_user(request.rq_data, node_info.db_handler) # type: ignore
                 if response.data:
                     response.status = ConstantsManagement.OK
                     response.rs_type = ConstantsManagement.TOKEN_TYPE
@@ -190,7 +190,7 @@ def process_client(client: ClientHandler):
                     response.status = ConstantsManagement.OPERATION_FAILED
                     response.rs_type = ConstantsManagement.NO_DATA_TYPE
             case "GETTOKEN":
-                response.data = client.get_token(request.rq_data) # type: ignore
+                response.data = client.get_token(request.rq_data, node_info.db_handler) # type: ignore
                 response.status = ConstantsManagement.OK
                 response.rs_type = ConstantsManagement.TOKEN_TYPE
             
@@ -232,7 +232,7 @@ def process_client(client: ClientHandler):
                     response.data = None
             
             case "GETTICKETS":
-                response.data = client.get_tickets(request.client_token)
+                response.data = client.get_tickets(request.client_token, node_info.db_handler)
 
                 if response.data:
                     response.status = ConstantsManagement.OK
@@ -284,7 +284,6 @@ def socket_client_handler():
             except KeyboardInterrupt:
                 return -1
 
-
 def batch_executor():
     global node_info, tc, requests_queue, batch_execution_results
 
@@ -310,8 +309,6 @@ def batch_executor():
 
 
 '''
-
-
 def batch_executor():
     global node_info, tc, requests_queue, batch_execution_results
 
@@ -383,7 +380,7 @@ def new_server_pool():
 
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
                 
-                if up_links[server] and merged[server]:
+                if merged[server]:
                     node_info.graph.unmerge_graph(server)
                     merged[server] = False
                     node_info.logger.info(f'Connection lost with {server}. Routes unmerged!')
@@ -404,7 +401,7 @@ def new_server_pool():
 
 if __name__ == "__main__":
     try:
-        #socket_listener_thread = Thread(target=socket_client_handler)
+        socket_listener_thread = Thread(target=socket_client_handler)
         batch_executor_thread = Thread(target=batch_executor)
         new_server_connections = Thread(target=new_server_pool, daemon=True)
         
@@ -418,74 +415,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:    
         exit(-1)
     finally:
-        #socket_listener_thread.join()
+        socket_listener_thread.join()
         batch_executor_thread.join()
         pass
-
-
-'''
-
-a = Transaction(transaction_id='000', intentions=[('A','C'),('A','B')],timestamp=[0,0,0])
-b = Transaction(transaction_id='001', intentions=[('A','D'), ('A','E')],timestamp=[0,0,1])
-c = Transaction(transaction_id='002', intentions= [('A','D')],timestamp=[0,1,1])
-a2 = Transaction(transaction_id='003', intentions=[('B','C'),('A','D1')],timestamp=[1,1,1])
-b2 = Transaction(transaction_id='004', intentions=[('A','0D'), ('A','E1')],timestamp=[2,1,1])
-c2 = Transaction(transaction_id='005', intentions= [('A','D2')],timestamp=[2,2,1])
-a3 = Transaction(transaction_id='006', intentions=[('A','C5'),('A6','D')],timestamp=[3,3,3])
-b3 = Transaction(transaction_id='007', intentions=[('A','D8'), ('A','E0')],timestamp=[4,4,4])
-c3 = Transaction(transaction_id='008', intentions= [('A9','D')],timestamp=[4,5,5])
-
-
-def test(trans):
-    return f'{TransactionStatus.DONE.value} - {trans.transaction_id}'
-
-def aaaa(transaction):
-    finish_event = Event()
-
-    heap_entry = ((transaction, datetime.now()) , (finish_event,test))
-    
-    with queue_lock:
-        heappush(requests_queue, heap_entry)
-        
-    finish_event.wait()
-
-    with results_lock:
-        result = batch_execution_results.pop(transaction.transaction_id)
-    
-    print(result)
-
-q = Thread(target=aaaa, args=[a])
-w = Thread(target=aaaa, args=[b])
-e = Thread(target=aaaa, args=[c])
-q2 = Thread(target=aaaa, args=[a2])
-w2 = Thread(target=aaaa, args=[b2])
-e2 = Thread(target=aaaa, args=[c2])
-q3 = Thread(target=aaaa, args=[a3])
-w3 = Thread(target=aaaa, args=[b3])
-e3 = Thread(target=aaaa, args=[c3])
-
-q.start()
-w.start()
-e.start()
-q2.start()
-w2.start()
-e2.start()
-q3.start()
-w3.start()
-e3.start()
-
-batch_executor_thread = Thread(target=batch_executor)
-batch_executor_thread.start()
-
-q.join()
-w.join()
-e.join()
-q2.join()
-w2.join()
-e2.join()
-q3.join()
-w3.join()
-e3.join()
-
-'''
-

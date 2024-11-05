@@ -1,6 +1,6 @@
-from utils.twoPhaseCommit import *
-from TwoPhaseCommitNode import *
-from Transaction import *
+from Server.utils.twoPhaseCommit import *
+from Server.TwoPhaseCommitNode import *
+from Server.Transaction import *
 import requests
 
 class TransactionManager(TwoPhaseCommitNode):

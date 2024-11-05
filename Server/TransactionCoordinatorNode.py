@@ -1,9 +1,9 @@
 
 import requests
-from TwoPhaseCommitNode import *
-from TransactionProtocolState import *
-from utils.twoPhaseCommit import *
-from utils.database import *
+from Server.TwoPhaseCommitNode import *
+from Server.TransactionProtocolState import *
+from Server.utils.twoPhaseCommit import *
+from Server.utils.database import *
 from hashlib import sha256
 import datetime
 

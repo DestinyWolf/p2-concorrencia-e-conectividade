@@ -1,7 +1,7 @@
-from database.mongoHandler import *
+from Server.database.mongoHandler import *
 from json import load
-from utils.database import CollectionsName
-from utils.twoPhaseCommit import ServerName
+from Server.utils.database import CollectionsName
+from Server.utils.twoPhaseCommit import ServerName
 
 
 handler = MongoHandler(CollectionsName.CONNECT_STRING.value, ServerName.A.value)
