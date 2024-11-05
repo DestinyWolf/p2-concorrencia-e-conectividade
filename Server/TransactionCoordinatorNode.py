@@ -84,12 +84,13 @@ class TransationCoordinator(TwoPhaseCommitNode):
                 for route in transaction.intentions[self.host_name.value]: #unlocking routes
                     self.graph.path_locks[route].release()
 
-        try:
-            if participant != self.host_name.value:
-                response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/committransaction', json={'transaction_id': transaction.transaction_id, 'decision': transaction.status.value}, headers={"Content-Type": "application/json"}, timeout=30)
-                transaction.done[participant] = True if response.json().get('msg')== TransactionStatus.DONE.value else False
-        except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
-            pass
+        for participant in transaction.participants:
+            try:
+                if participant != self.host_name.value:
+                    response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/committransaction', json={'transaction_id': transaction.transaction_id, 'decision': transaction.status.value}, headers={"Content-Type": "application/json"}, timeout=30)
+                    transaction.done[participant] = True if response.json().get('msg')== TransactionStatus.DONE.value else False
+            except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
+                pass
 
         
         if transaction.status == TransactionStatus.COMMIT:
