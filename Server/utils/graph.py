@@ -8,49 +8,76 @@ class RoutesGraph:
 
     graph_lock = Lock() #mutex para o acesso ao grafo
 
-    def __init__(self, server_id):
+    def __init__(self, server_name:str):
         self.path_locks:dict[str:Lock] = {}
-        self.graph:nx.DiGraph = self.__init_graph(server_id)
-        self.destinations:list[str] = list(self.graph)
+        self.graph:nx.DiGraph = self.__init_graph(server_name)
+        self.destinations = set(self.graph)
     
 ##
 #   @brief: Método utilizado inicializar o grafo de rotas
 #   @return new_grah - DiGraph carregado do arquivo de grafos do servidor.
 #   Caso contrário, retorna um DiGraph vazio
 ##
-    def __init_graph(self, server_name):
+    def __init_graph(self, server_name:str):
         db_handler = MongoHandler(connect_string= CollectionsName.CONNECT_STRING.value, companhia=server_name)
         new_graph = nx.DiGraph()
         
-        adjacency_dict:dict = db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)[0]
+        adjacency_dict = db_handler.get_all_itens_in_group(CollectionsName.GRAPH.value)
         
-        del adjacency_dict['_id']
-
         if adjacency_dict:
-            for node, edges in adjacency_dict.items():
-                for neighbor, attrs in edges.items():
-                    self.path_locks[(node, neighbor)] = Lock()
-                    attrs["company"] = {server_name: attrs['globalWeight']}
-                    new_graph.add_edge(node, neighbor, **attrs)
+
+            for edge in adjacency_dict:
+                del edge['_id']
+                u , data = edge.popitem()
+                v, attrs = data.popitem()
+                self.path_locks[(u,v)] = Lock()
+                attrs['globalWeight'] = attrs['weight']
+                attrs["company"] = {server_name: attrs['weight']}
+                new_graph.add_edge(u,v,**attrs)
 
         return new_graph
 
-    def merge_graph(self, peers_adjacency:dict, peer_id:str):
+    def unmerge_graph(self, peers_id):
         with RoutesGraph.graph_lock:
-            for edge, weight in peers_adjacency.items():
-                edge = eval(edge) #convertendo str->tuple
+            remove_edges = []
+            for edge in self.graph.edges:
+                u,v = edge
+                self.graph[u][v]['company'].pop(peers_id, None)
+                if self.graph[u][v]['company']:
+                    self.update_global_edge_weight((u,v))
+                else:
+                    if edge not in self.path_locks:
+                        remove_edges.append(edge)
+            
+            for edge in remove_edges:
+                u, v = edge
+                self.graph.remove_edge(u,v)
+                if not self.graph[u] and u not in self.destinations:
+                    self.graph.remove_node(u)
+                if not self.graph[v] and v not in self.destinations:
+                    self.graph.remove_node(v)   
+                    
 
-                if self.graph.has_edge(edge[0], edge[1]): 
+         
 
-                    with self.path_locks[edge]: #bloqueando mutex do trecho
-                        self.graph[edge[0]][edge[1]]["company"].update([(peer_id, weight)])
+    def merge_graph(self, peers_adjacency:list, peer_id:str):
+        with RoutesGraph.graph_lock:
+            for edge in peers_adjacency:
+                del edge['_id']
+                u , data = edge.popitem()
+                v, attrs = data.popitem()
+                
+                if self.graph.has_edge(u,v): 
+                    with self.path_locks[(u,v)]: #bloqueando mutex do trecho
+                        self.graph[u][v]["company"].update([(peer_id, attrs['weight'])])
                 
                 else:
-                    self.graph.add_edge(edge[0],edge[1], globalWeight= weight, company={peer_id: weight})
+                    self.graph.add_edge(u,v, globalWeight= attrs['weight'], company={peer_id: attrs['weight']})
                 
-                self.__update_global_edge_weight(edge)
+                self.update_global_edge_weight((u,v))
 
-    def __update_global_edge_weight(self, edge:tuple):
+
+    def update_global_edge_weight(self, edge:tuple):
         #Atualizando peso global 
         weight_values = set(self.graph[edge[0]][edge[1]]["company"].values())
 
@@ -85,7 +112,7 @@ class RoutesGraph:
         except (nx.NetworkXNoPath, nx.NetworkXError, ValueError) as err:
             return None
 
-    def match_route_to_company(self, routes:list):
+    def match_route_to_company(self, routes:list): #bug -> provavelmente o break
         matched_routes = []
 
         for route in routes:
@@ -98,7 +125,3 @@ class RoutesGraph:
             matched_routes.append(temp)
 
         return matched_routes
-
-from utils.twoPhaseCommit import ServerName
-a = RoutesGraph(ServerName.A.value)
-print(a.search_route('A','B'))

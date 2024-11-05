@@ -1,8 +1,9 @@
 from Transaction import *
+import json
 
 class TransactionProtocolState(Transaction):
-    def __init__(self, coordinator_ip:ServerIds=None, transaction_id:str=None, participants=set(), intentions={}, timestamp = None):
-        super().__init__(coordinator_ip, transaction_id, participants, intentions, timestamp)
+    def __init__(self, coordinator:str=None, transaction_id:str=None, participants=set(), intentions={}, timestamp = None):
+        super().__init__(coordinator, transaction_id, participants, intentions, timestamp)
         self.preparedToCommit = {}
         self.done = {}
 
@@ -21,4 +22,17 @@ class TransactionProtocolState(Transaction):
         return {'_id': self.transaction_id, 'coordinator': self.coordinator, 'participants': list(self.participants),
                 'intentions': self.intentions, 'status': self.status.value, 'timestamp': self.timestamp, 'preparedToCommit': self.preparedToCommit,
                 'done': self.done}
+    
+    def to_request_msg(self, peer) -> dict:
+        return {'transaction_id': self.transaction_id, 'coordinator':self.coordinator, 'timestamp': self.timestamp,
+                'participants': list(self.participants), 'intentions': self.intentions[peer]}
+    
 
+        
+
+
+    
+
+        
+
+    

@@ -1,6 +1,6 @@
 from utils.twoPhaseCommit import *
 from utils.database import *
-from mongoHandler import *
+from database.mongoHandler import *
 
 class Transaction():
     def __init__(self, coordinator:str=None, transaction_id:str=None, participants=None, intentions=None, timestamp=None):
@@ -16,7 +16,7 @@ class Transaction():
         self.transaction_id = transaction_id
         self.coordinator = restored_data['coordinator']
         self.participants = set(restored_data['participants'])
-        self.intentions = restored_data['intentions']
+        self.intentions = [tuple(i) for i in restored_data['intentions']]
         self.status = TransactionStatus(restored_data['status'])
         self.timestamp = restored_data['timestamp']
     

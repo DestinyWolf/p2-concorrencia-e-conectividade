@@ -1,4 +1,4 @@
-from pymongo import MongoClient, PyMongoError
+from pymongo import MongoClient
 
 class MongoHandler:
     def __init__(self, connect_string:str, companhia:str):
@@ -52,10 +52,10 @@ class MongoHandler:
         try:
             with self.client.start_session() as session:
                 for data in data_list:
-                    self.__get_collection(group).replace_one(data[0], data[1], session=session)
-
+                    response = self.__get_collection(group).replace_one(data[0], data[1], session=session)
+                    print(response.matched_count)
 
             return True
-        except PyMongoError as e:
+        except Exception as e:
             return False
 

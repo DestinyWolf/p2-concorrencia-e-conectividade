@@ -1,4 +1,5 @@
 
+import requests
 from TwoPhaseCommitNode import *
 from TransactionProtocolState import *
 from utils.twoPhaseCommit import *
@@ -17,7 +18,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
 
-        transaction_state  = TransactionProtocolState(self.host_name.value, transaction_id, timestamp)
+        transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp)
         
         for route in routes:
             participant:str = route[2]
@@ -43,29 +44,90 @@ class TransationCoordinator(TwoPhaseCommitNode):
         self.db_handler.insert_data(transaction.to_db_entry(), CollectionsName.LOG.value)
         self.logger.info(f'Transaction {transaction.transaction_id} initiated')
 
-        #TODO send prepare msg to all participants
-        #if coordinator is a participant also, check for available sits
-
+        for participant in transaction.participants:
+            try:
+                if participant != self.host_name.value:
+                    response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/newtransaction', json=transaction.to_request_msg('Server-B'), headers={"Content-Type": "application/json"}, timeout=30)
+                    transaction.preparedToCommit[participant] = True if response.json().get('msg') == TransactionStatus.READY.value else False
+            except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
+                transaction.preparedToCommit[participant] = False 
+        
         self.logger.info(f"{self.host_name} send PREPARE request to participants of transaction {transaction.transaction_id}")
         
+        if self.host_name.value in transaction.participants:
+            for route in transaction.intentions[self.host_name.value]: #locking routes
+                self.graph.path_locks.get(route).acquire()
+        
+            for route in transaction.intentions[self.host_name.value]: #checking if there are sits available
+                if self.graph.graph[route[0]][route[1]]['sits'] == 0:
+                    transaction.preparedToCommit[self.host_name.value] = False
+                    break
+
+            if transaction.preparedToCommit[self.host_name.value] is not None:       
+                for route in transaction.intentions: #unlocking routes
+                    self.graph.path_locks.get(route).release()
+            else:
+                transaction.preparedToCommit[self.host_name.value] = True
+        
+
+
         if all(transaction.preparedToCommit.values()):
             transaction.status = TransactionStatus.COMMIT
             self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
             self.logger.info(f'Transaction {transaction.transaction_id} COMMITED')
-            #send commit msgs
-            ##if coordinator is a participant also, commit changes
+            
+            if self.host_id.value in transaction.intentions:
+                self.__commit_local_transaction(transaction)
+                
         else:
             transaction.status = TransactionStatus.ABORTED
             self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
             self.logger.warning(f'Transaction {transaction.transaction_id} ABORTED')
-            #send abort msg
-            #if coordinator is a participant also, release locks
+            if self.host_name.value in transaction.participants:           
+                for route in transaction.intentions[self.host_name.value]: #unlocking routes
+                    self.graph.path_locks.get(route).release()
 
+        try:
+            if participant != self.host_name.value:
+                response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/committransaction', json={'transaction_id': transaction.transaction_id, 'decision': transaction.status.value}, headers={"Content-Type": "application/json"}, timeout=30)
+                transaction.done[participant] = True if response.json().get('msg')== TransactionStatus.DONE.value else False
+        except (ConnectionError, ConnectionAbortedError, ConnectionRefusedError, requests.Timeout):
+            pass
+
+        
         transaction.status = TransactionStatus.DONE
         self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
         self.logger.info(f'Transaction {transaction.transaction_id} DONE')
         return transaction.status.value
-   
+    
+
+    def __commit_local_transaction(self, transaction: TransactionProtocolState):
+        new_values = []
+        
+        for route in transaction.intentions[self.host_name.value]:
+            u , v = route
+            self.graph.graph[u][v]['sits'] -= 1
+            print(self.graph.graph[u][v]['sits'])
+            if self.graph.graph[u][v]['sits'] == 0:
+                self.graph.graph[u][v]['weight'] = 999
+                self.graph.graph[u][v]['company'][self.host_name.value] = 999
+                self.graph.update_global_edge_weight((u,v))
+                for peer, ip in SERVERIP.items():
+                    if peer != self.host_name.value:
+                        try:
+                            response = requests.post(f'http://{ip}:{SERVERPORT[peer]}/updateroute', json={'whoIsMe': self.host_name.value, 'routeToUpdate': route, 'msg':999}, headers={"Content-Type": "application/json"})
+                        except Exception:
+                            continue
+            
+            attrs = self.graph.graph[u][v].copy()
+            del attrs['company']
+            del attrs['globalWeight']
+            new_values.append(({'_id':f'{u}|{v}'}, {'_id': f'{u}|{v}', u:{v:attrs}}))
+            self.graph.path_locks[(u, v)].release()
+        
+        self.db_handler.update_many(CollectionsName.GRAPH.value, new_values)
+
+
     def handle_ready_RPC(self, transaction_id:str, server_name:str, ready:bool):
         transaction = TransactionProtocolState()
         transaction.load_transaction_from_db(transaction_id, self.db_handler)

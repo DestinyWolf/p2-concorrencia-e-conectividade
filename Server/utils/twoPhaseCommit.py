@@ -20,3 +20,5 @@ class ServerName(Enum):
     C = 'Server-C'
 
 SERVERIP:dict = {ServerName.A.value: '127.0.0.1', ServerName.B.value: '127.0.0.2', ServerName.C.value: '127.0.0.3'}
+
+SERVERPORT:dict = {ServerName.A.value: '5000', ServerName.B.value: '5001', ServerName.C.value: '5002'}

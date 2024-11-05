@@ -1,6 +1,7 @@
 from utils.twoPhaseCommit import *
 from TwoPhaseCommitNode import *
 from Transaction import *
+import requests
 
 class TransactionManager(TwoPhaseCommitNode):
 
@@ -9,7 +10,7 @@ class TransactionManager(TwoPhaseCommitNode):
         self.logger.name = f"{type(self).__name__} - {self.host_name.value}"
             
 
-    def handle_prepare_RPC(self, transaction:Transaction) -> TransactionStatus:
+    def handle_prepare_RPC(self, transaction:Transaction) -> str:
         recovered_transaction = self.db_handler.get_data_by_filter({'_id': transaction.transaction_id}, CollectionsName.LOG.value)
         
         if recovered_transaction:
@@ -40,50 +41,62 @@ class TransactionManager(TwoPhaseCommitNode):
         self.logger.info(f"{transaction.transaction_id} -> {transaction.status.value}")
         return transaction.status.value
 
-    def handle_commit_RPC(self, transaction_id:str) -> TransactionStatus:
-        recovered_transaction:Transaction = Transaction()
-        recovered_transaction.load_transaction_from_db(transaction_id, self.db_handler)
+    def handle_commit_RPC(self, recovered_transaction:Transaction) -> str:
+        
         
         if recovered_transaction.status == TransactionStatus.READY:                        
         
             recovered_transaction.status = TransactionStatus.COMMIT
-            self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction_id}, recovered_transaction.to_db_entry())
-            self.logger.info(f'Transaction {transaction_id} {recovered_transaction.status.value}')
+            self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': recovered_transaction.transaction_id}, recovered_transaction.to_db_entry())
+            self.logger.info(f'Transaction {recovered_transaction.transaction_id} {recovered_transaction.status.value}')
 
+            new_values = []
             for route in recovered_transaction.intentions:
-                self.graph.graph[route[0]][route[1]]['sits'] -= 1
-
-                #TODO: update in db with atomic transation
+                u , v = route
+                self.graph.graph[u][v]['sits'] -= 1
                 
-                if self.graph.graph[route[0]][route[1]]['sits'] == 0:
-                    #send update request
-                    pass
+                if self.graph.graph[u][v]['sits'] == 0:
+                    self.graph.graph[u][v]['weight'] = 999
+                    self.graph.graph[u][v]['company'][self.host_name.value] = 999
+                    self.graph.update_global_edge_weight((u,v))
+                    for peer, ip in SERVERIP.items():
+                        if peer != self.host_name.value:
+                            try:
+                                response = requests.post('http://'+ip+':5001/updateroute', json={'whoIsMe': self.host_name.value, 'routeToUpdate': route, 'msg':999}, headers={"Content-Type": "application/json"})
+                            except Exception:
+                                continue
                 
-                self.graph.path_locks[(route[0], route[1])].release()
+                attrs = self.graph.graph[u][v].copy()
+                del attrs['company']
+                del attrs['globalWeight']
+                new_values.append(({'_id':f'{u}|{v}'}, {'_id': f'{u}|{v}', u:{v:attrs}}))
+                self.graph.path_locks[(u, v)].release()
+            
+            self.db_handler.update_many(CollectionsName.GRAPH.value, new_values)
         else:
-            self.logger.info(f"Illegal commit for {transaction_id}. Current state is {recovered_transaction.status}")
+            self.logger.info(f"Illegal commit for {recovered_transaction.transaction_id}. Current state is {recovered_transaction.status}")
 
         recovered_transaction.status = TransactionStatus.DONE
-        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction_id}, recovered_transaction.to_db_entry())
-        self.logger.info(f'Transaction {transaction_id} {recovered_transaction.status.value}')
+        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': recovered_transaction.transaction_id}, recovered_transaction.to_db_entry())
+        self.logger.info(f'Transaction {recovered_transaction.transaction_id} {recovered_transaction.status.value}')
         
         return recovered_transaction.status.value
     
-    def handle_abort_RPC(self, transaction_id:str) -> TransactionStatus:
-        recovered_transaction:Transaction = Transaction()
-        recovered_transaction.load_transaction_from_db(transaction_id, self.db_handler)
+    def handle_abort_RPC(self, recovered_transaction: Transaction) -> str:
 
         if recovered_transaction.status == TransactionStatus.READY:
         
             recovered_transaction.status = TransactionStatus.ABORTED
-            self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction_id}, recovered_transaction.to_db_entry())
-            self.logger.warning(f'{transaction_id} -> ABORTED')
+            self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': recovered_transaction.transaction_id}, recovered_transaction.to_db_entry())
+            self.logger.warning(f'{recovered_transaction.transaction_id} -> ABORTED')
 
             for route in recovered_transaction.intentions:
-                self.graph.path_locks[(route[0], route[1])].release()
+                self.graph.path_locks[route].release()
 
         else:
-            self.logger.warning(f"Illegal abort for {transaction_id}. Current state is {recovered_transaction.status.value}") 
+            self.logger.warning(f"Illegal abort for {recovered_transaction.transaction_id}. Current state is {recovered_transaction.status.value}") 
 
 
         return recovered_transaction.status.value
+
+

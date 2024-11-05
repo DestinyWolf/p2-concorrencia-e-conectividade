@@ -5,7 +5,7 @@ from utils.twoPhaseCommit import *
 from utils.database import *
 from utils.graph import *
 from vector_clock import *
-from mongoHandler import *
+from database.mongoHandler import *
 from threading import Lock
 
 
