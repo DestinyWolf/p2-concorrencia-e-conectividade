@@ -13,7 +13,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
         super().__init__(host_id, host_name, host_port)
         self.logger.name = f"{type(self).__name__} - {self.host_name.value}"
     
-    def setup_transaction(self, routes:list[list[str,str,str]], client_ip:str) -> TransactionProtocolState:
+    def setup_transaction(self, routes:list[list[str]], client_ip:str) -> TransactionProtocolState:
         timestamp = self.clock.increment_clock(self.host_id.value)
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
@@ -99,7 +99,6 @@ class TransationCoordinator(TwoPhaseCommitNode):
         
         self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
         self.logger.info(f'Transaction {transaction.transaction_id} {transaction.status.value}')
-        
         return transaction.status.value
     
 
