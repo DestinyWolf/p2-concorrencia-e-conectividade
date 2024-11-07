@@ -4,7 +4,7 @@ import json
 import datetime
 from Server.utils.database import *
 from Server.database.mongoHandler import *
-import hashlib
+from hashlib import sha256
 
 
 ##
@@ -117,7 +117,7 @@ class Ticket:
 #   @return: dict contendos os valores dos atributos da instância
 ##
     def to_json(self):
-        json_str = {'_id': int(hashlib.md5(self.token.encode('utf-8')).hexdigest(), 16)+int(self.timestamp.timestamp()), 'token': self.token,
+        json_str = {'_id': sha256((self.token + str(self.timestamp)).encode('utf-8')).hexdigest(), 'token': self.token,
                     'timestamp':self.timestamp.strftime('%d/%m/%Y %H:%M:%S'), 'routes':self.routes}
 
         return json_str
