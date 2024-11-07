@@ -24,7 +24,7 @@ class ClientHandler:
         if db_handler.get_data_by_filter({'_id':token}, CollectionsName.USER.value):
             return None
         else:
-            db_handler.insert_data({'_id': token, 'email': email})
+            db_handler.insert_data({'_id': token, 'email': email}, CollectionsName.USER.value)
             return token
 
     ##
@@ -34,9 +34,9 @@ class ClientHandler:
     ##
     def get_token(self, email:str, db_handler:MongoHandler):
         try:
-            token = db_handler.get_data_by_filter({'email':email}, CollectionsName.USER.name)
+            token = db_handler.get_data_by_filter({'email':email}, CollectionsName.USER.value)
             if token:
-                return token[0]['token']
+                return token[0]['_id']
             else:
                 raise KeyError()
         except KeyError:
@@ -75,7 +75,7 @@ class ClientHandler:
     ##
         
     def get_tickets(self, token:str, db_handler:MongoHandler):
-        tickets = db_handler.get_data_by_filter({'token': token}, CollectionsName.TICKET.value)
+        tickets = db_handler.get_data_by_filter({'_id': token}, CollectionsName.TICKET.value)
         if tickets:
             del tickets[0]['_id']
             return tickets[0]
