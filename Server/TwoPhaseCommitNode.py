@@ -6,7 +6,6 @@ from Server.utils.database import *
 from Server.utils.graph import *
 from Server.vector_clock import *
 from Server.database.mongoHandler import *
-from threading import Lock
 
 
 
