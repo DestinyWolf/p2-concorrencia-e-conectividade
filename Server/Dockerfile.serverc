@@ -20,4 +20,4 @@ RUN pip install networkx
 RUN pip install pymongo
 
 #rodar o cliente na inicialização do container
-CMD ["python", "-m", "Server.serverC"]
+CMD ["python", "./server_mainC.py"]
