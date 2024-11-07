@@ -2,8 +2,8 @@ from enum import Enum
 import socket
 import json
 import datetime
-from Server.utils.database import *
-from Server.database.mongoHandler import *
+from utils.database import *
+from database.mongoHandler import *
 from hashlib import sha256
 
 
