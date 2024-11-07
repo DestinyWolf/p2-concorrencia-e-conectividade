@@ -72,8 +72,7 @@ class RoutesGraph:
                 v, attrs = data.popitem()
                 
                 if self.graph.has_edge(u,v): 
-                    with self.path_locks[(u,v)]: #bloqueando mutex do trecho
-                        self.graph[u][v]["company"].update([(peer_id, attrs['weight'])])
+                    self.graph[u][v]["company"].update([(peer_id, attrs['weight'])])
                 
                 else:
                     self.graph.add_edge(u,v, globalWeight= attrs['weight'], company={peer_id: attrs['weight']})
