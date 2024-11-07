@@ -1,9 +1,9 @@
 
 import requests
-from Server.TwoPhaseCommitNode import *
-from Server.TransactionProtocolState import *
-from Server.utils.twoPhaseCommit import *
-from Server.utils.database import *
+from TwoPhaseCommitNode import *
+from TransactionProtocolState import *
+from utils.twoPhaseCommit import *
+from utils.database import *
 from hashlib import sha256
 import datetime
 
@@ -18,7 +18,8 @@ class TransationCoordinator(TwoPhaseCommitNode):
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
 
-        transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp, intentions={})
+        transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp)
+        transaction_state.intentions = {}
         
         for route in routes:
             participant:str = route[2]
@@ -65,7 +66,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
             else:
                 transaction.preparedToCommit[self.host_name.value] = True
         
-        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry(), )
+        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
 
         if all(transaction.preparedToCommit.values()):
             transaction.status = TransactionStatus.COMMIT
