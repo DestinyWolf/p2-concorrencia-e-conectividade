@@ -27,48 +27,47 @@ token = "a94eec86fedaf5c082bb8dea59f0a893eb5a21dd453f69450e0e3028cc7c664b"
 
 #request_func(type=ConstantsManagement.BUY.value, data=[['A','B', 'Server-A']], token=token) 
 
-request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
-'''
+#request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
+
 #create clients
-request_func(ConstantsManagement.CREATE_USER.value, "panda@example.com")
-request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
+# request_func(ConstantsManagement.CREATE_USER.value, "panda@example.com")
+# #request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
 
-#get token
-request_func(ConstantsManagement.GETTOKEN.value, "pandas@example.com") #not registered
-request_func(ConstantsManagement.GETTOKEN.value, "pandicorn@example.com")
+# #get token
+# request_func(ConstantsManagement.GETTOKEN.value, "pandas@example.com") #not registered
+# request_func(ConstantsManagement.GETTOKEN.value, "pandicorn@example.com")
 
-#no tickets
-request_func(ConstantsManagement.GETTICKETS.value, None, token) #good token
-request_func(ConstantsManagement.GETTICKETS.value, None, token+'ead') #bad token
+# #no tickets
+# request_func(ConstantsManagement.GETTICKETS.value, None, token) #good token
+# request_func(ConstantsManagement.GETTICKETS.value, None, token+'ead') #bad token
 
-#check routes
-request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "A"}, token) #good
+# #check routes
+# request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "A"}, token) #good
 
-request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "A"}, "a7cdf5d0586b392473dd0cd08c9ba833240006a8a7310bf9bc8aefdfaeadb") #bad token
+# request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "A"}, "a7cdf5d0586b392473dd0cd08c9ba833240006a8a7310bf9bc8aefdfaeadb") #bad token
 
-request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "D"}, token) #bad route
+# request_func(ConstantsManagement.GETROUTES.value, {"match": "D", "destination": "D"}, token) #bad route
 
-request_func(ConstantsManagement.GETROUTES.value, {"match": "E", "destination": "A"}, token) #bad node
+# request_func(ConstantsManagement.GETROUTES.value, {"match": "E", "destination": "A"}, token) #bad node
 
-request_func(ConstantsManagement.GETROUTES.value, {"match": "A", "destination": "B"}, token) #no sits left
+# request_func(ConstantsManagement.GETROUTES.value, {"match": "A", "destination": "B"}, token) #no sits left
 
-#buying
-request_func(ConstantsManagement.BUY.value, [ ("D","C")], token) #1 sit left
+# #buying
+# request_func(ConstantsManagement.BUY.value, [ ("D","C")], token) #1 sit left
 
 
-request_func(ConstantsManagement.BUY.value, [ ("D","C")], token) #no sits
+# request_func(ConstantsManagement.BUY.value, [ ("D","C")], token) #no sits
 
-request_func(ConstantsManagement.BUY.value, [ ("A","C")], token) #with multiple sits
+request_func(ConstantsManagement.BUY.value, [ ("A","C", 'Server-A')], token) #with multiple sits
 
-request_func(ConstantsManagement.BUY.value, [ ("B","D")], token) #bad route
+# request_func(ConstantsManagement.BUY.value, [ ("B","D")], token) #bad route
 
-request_func(ConstantsManagement.BUY.value, [ ("A","E")], token) #bad node
+# request_func(ConstantsManagement.BUY.value, [ ("A","E")], token) #bad node
 
-request_func(ConstantsManagement.BUY.value, [ ("A","B")], "a7cdf5d0586b392473dd0cd08c9ba833240006a8a73109bc8bf1aefdfaeadb") #bad token
+# request_func(ConstantsManagement.BUY.value, [ ("A","B")], "a7cdf5d0586b392473dd0cd08c9ba833240006a8a73109bc8bf1aefdfaeadb") #bad token
 
-#tickets
+# #tickets
 
-request_func(ConstantsManagement.GETTICKETS.value, None, token) #good
+# request_func(ConstantsManagement.GETTICKETS.value, None, token) #good
 
-'''
 

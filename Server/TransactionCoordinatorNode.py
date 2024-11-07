@@ -18,7 +18,7 @@ class TransationCoordinator(TwoPhaseCommitNode):
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
 
-        transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp)
+        transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp, intentions={})
         
         for route in routes:
             participant:str = route[2]
