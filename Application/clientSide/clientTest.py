@@ -1,9 +1,9 @@
-import socket
-from Client.ClientSockClass import *
-from Client.requests import Request, ConstantsManagement
-
+from Application.Client.ClientSockClass import *
+from Server.utils.socketCommunicationProtocol import Request, ConstantsManagement
+from Server.utils.twoPhaseCommit import *
 def request_func(type, data, token=None):
-    sock = ClientSocket(socket.gethostbyname(socket.gethostname()))
+    sock = ClientSocket(SERVERIP['Server-A'])
+
     sock.connect()
     request = Request(rq_type=type, rq_data=data, client_token=token)
     rq_json = request.to_json()
@@ -21,12 +21,15 @@ def request_func(type, data, token=None):
     print()
 
 
-token = "6602ca3b2497a1abb32ea93f0d02eff123dad0e6b31f9835a0d32b0604d03a64"
+token = "a94eec86fedaf5c082bb8dea59f0a893eb5a21dd453f69450e0e3028cc7c664b"
 #no clients
-request_func(ConstantsManagement.GETTOKEN.value, "panda@example.com")
+#request_func(ConstantsManagement.CREATE_USER.value, "panda@example.com")
 
-#create clients
+#request_func(type=ConstantsManagement.BUY.value, data=[['A','B', 'Server-A']], token=token) 
+
 request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
+'''
+#create clients
 request_func(ConstantsManagement.CREATE_USER.value, "panda@example.com")
 request_func(ConstantsManagement.CREATE_USER.value, "pandicorn@example.com")
 
@@ -67,5 +70,5 @@ request_func(ConstantsManagement.BUY.value, [ ("A","B")], "a7cdf5d0586b392473dd0
 
 request_func(ConstantsManagement.GETTICKETS.value, None, token) #good
 
-
+'''
 
