@@ -1,7 +1,7 @@
-from Server.utils.database import *
+from utils.database import *
 from threading import Lock
 import networkx as nx
-from Server.database.mongoHandler import *
+from database.mongoHandler import *
 
 
 class RoutesGraph:
@@ -31,7 +31,7 @@ class RoutesGraph:
                 u , data = edge.popitem()
                 v, attrs = data.popitem()
                 self.path_locks[(u,v)] = Lock()
-                attrs['weight'] = attrs['globalWeight']
+                attrs['globalWeight'] = attrs['weight']
                 attrs["company"] = {server_name: attrs['weight']}
                 new_graph.add_edge(u,v,**attrs)
 
