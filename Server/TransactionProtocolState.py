@@ -1,8 +1,8 @@
-from Server.Transaction import *
+from Transaction import *
 import json
 
 class TransactionProtocolState(Transaction):
-    def __init__(self, coordinator:str=None, transaction_id:str=None, participants=set(), intentions={}, timestamp = None):
+    def __init__(self, coordinator:str=None, transaction_id:str=None, participants=set(), intentions=None, timestamp = None):
         super().__init__(coordinator, transaction_id, participants, intentions, timestamp)
         self.preparedToCommit = {}
         self.done = {}
