@@ -11,5 +11,5 @@ class CollectionsName(Enum):
     ROUTE = 'routeCollection'
     GRAPH = 'graphCollection'
     LOG = 'logCollection'
-    CONNECT_STRING = 'mongodb://localhost:27017/'
+    CONNECT_STRING = 'mongodb://localhost:27018/'
     COMPANY = 'company'
