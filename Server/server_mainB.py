@@ -186,7 +186,8 @@ def process_client(client: ClientHandler):
                     response.status = ConstantsManagement.OPERATION_FAILED
                     response.rs_type = ConstantsManagement.NO_DATA_TYPE
             case "GETTOKEN":
-                response.data = client.get_token(request.rq_data, node_info.db_handler) # type: ignore
+                print('connected')
+                response.data = client.get_token(email=request.rq_data, db_handler=node_info.db_handler) # type: ignore
                 response.status = ConstantsManagement.OK
                 response.rs_type = ConstantsManagement.TOKEN_TYPE
             
@@ -201,12 +202,10 @@ def process_client(client: ClientHandler):
                     response.rs_type = ConstantsManagement.NO_DATA_TYPE
             
             case "BUY":
-                
-                transaction = tc.setup_transaction(request.rq_data, client.addr)
+                transaction = tc.setup_transaction(request.rq_data, str(client.addr[0]))
                 finish_event = Event()
 
                 heap_entry = ((transaction,node_info.host_name.value, datetime.now()), (finish_event, tc.prepare_transaction))
-                
                 with queue_lock:
                     heappush(requests_queue, heap_entry)
                     
@@ -274,6 +273,7 @@ def socket_client_handler():
             try:
                 (conn, client) = socket_manager.server_socket.accept()
                 new_client = ClientHandler(conn, client)
+                print('connected')
                 exec.submit(process_client, new_client)
             except socket.error as er:
                 node_info.logger.error(f"Error accepting new connection. Error: {er} Retrying...\n")
@@ -398,7 +398,7 @@ if __name__ == "__main__":
         new_server_connections.start()
 
         
-        app.run(host=SERVERIP[ServerName.B.value],  port=SERVERPORT[ServerName.B.value], threaded=True)
+        app.run(host=SERVERIP[ServerName.B.value],  port=SERVERPORT[ServerName.B.value])
     except KeyboardInterrupt:    
         exit(-1)
     finally:
