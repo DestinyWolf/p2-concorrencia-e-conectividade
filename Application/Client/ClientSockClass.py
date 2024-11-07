@@ -6,7 +6,7 @@ class ClientSocket:
     def __init__(self, ip=''):
         self.addr = None
         self.ip = ip
-        self.port = 9000
+        self.port = 8000
         self.client_socket = None
         self.token = ''
 
@@ -16,6 +16,7 @@ class ClientSocket:
         self.addr = (self.ip, self.port)
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.settimeout(10)
+        self.client_socket.settimeout(30)
 
         try:
             self.client_socket.connect(self.addr)
