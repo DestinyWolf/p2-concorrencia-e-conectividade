@@ -1,21 +1,21 @@
-from Server.SocketManagement import *
+from SocketManagement import *
 from threading import *
 from concurrent.futures import *
-from Server.database.mongoHandler import *
-from Server.utils.database import CollectionsName
-from Server.utils.twoPhaseCommit import *
-from Server.ClientHandlerClass import *
-from Server.TwoPhaseCommitNode import *
-from Server.TransactionCoordinatorNode import *
-from Server.TransactionManagerNode import *
-from Server.utils.socketCommunicationProtocol import *
+from database.mongoHandler import *
+from utils.database import CollectionsName
+from utils.twoPhaseCommit import *
+from ClientHandlerClass import *
+from TwoPhaseCommitNode import *
+from TransactionCoordinatorNode import *
+from TransactionManagerNode import *
+from utils.socketCommunicationProtocol import *
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from time import sleep
 from datetime import *
 from heapq import *
 import requests
-from Server.utils.customExceptions import *
+from utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 
@@ -400,24 +400,24 @@ def new_server_pool():
 
 
 
-if __name__ == "__main__":
-    try:
-        socket_listener_thread = Thread(target=socket_client_handler)
-        batch_executor_thread = Thread(target=batch_executor)
-        new_server_connections = Thread(target=new_server_pool, daemon=True)
-        
 
-        socket_listener_thread.start()
-        batch_executor_thread.start()
-        new_server_connections.start()
+try:
+    socket_listener_thread = Thread(target=socket_client_handler)
+    batch_executor_thread = Thread(target=batch_executor)
+    new_server_connections = Thread(target=new_server_pool, daemon=True)
+    
 
-        
-        app.run(host=SERVERIP[ServerName.A.value],  port=SERVERPORT[ServerName.A.value])
-    except KeyboardInterrupt:    
-        exit(-1)
-    finally:
-        socket_listener_thread.join()
-        batch_executor_thread.join()
-        pass
+    socket_listener_thread.start()
+    batch_executor_thread.start()
+    new_server_connections.start()
+
+    
+    app.run(host=SERVERIP[ServerName.A.value],  port=SERVERPORT[ServerName.A.value])
+except KeyboardInterrupt:    
+    exit(-1)
+finally:
+    socket_listener_thread.join()
+    batch_executor_thread.join()
+    pass
 
 
