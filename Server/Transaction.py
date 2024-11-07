@@ -1,6 +1,6 @@
-from Server.utils.twoPhaseCommit import *
-from Server.utils.database import *
-from Server.database.mongoHandler import *
+from utils.twoPhaseCommit import *
+from utils.database import *
+from database.mongoHandler import *
 
 class Transaction():
     def __init__(self, coordinator:str=None, transaction_id:str=None, participants=None, intentions=None, timestamp=None):
