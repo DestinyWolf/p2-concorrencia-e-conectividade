@@ -3,7 +3,7 @@ from Client import ClientSockClass
 from Client import requests
 
 #inserir aqui o ip do servidor
-ip = '127.0.0.1'
+ip = '127.0.0.2'
 email = 'usuario@test'
 match = 'Salvador'
 destination = 'Belem'

@@ -17,7 +17,7 @@
     "I": {
         "J": {"weight": 1, "sits": 20, "id": "008", "company": {"B": 1}}
     },
-    "J": {
-        "G": {"weight": 1, "sits": 25, "id": "009", "company": {"B": 1}}
+    "Fortaleza": {
+        "Curitiba": {"weight": 1, "sits": 25, "id": "009", "company": {"B": 1}}
     }
 }

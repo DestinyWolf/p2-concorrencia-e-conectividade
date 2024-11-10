@@ -15,7 +15,7 @@ from time import sleep
 from datetime import *
 from heapq import *
 import requests
-from Server.utils.customExceptions import *
+from utils.customExceptions import *
 app = Flask(__name__)
 CORS(app)
 

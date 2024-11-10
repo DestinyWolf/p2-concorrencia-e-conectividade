@@ -1,9 +1,9 @@
 from hashlib import sha256
-from Server.utils.database import *
-from Server.utils.socketCommunicationProtocol import *
+from utils.database import *
+from utils.socketCommunicationProtocol import *
 import socket
-from Server.utils.customExceptions import InvalidTokenException
-from Server.database.mongoHandler import *
+from utils.customExceptions import InvalidTokenException
+from database.mongoHandler import *
 
 
 ##
