@@ -14,16 +14,15 @@ class TransationCoordinator(TwoPhaseCommitNode):
         self.logger.name = f"{type(self).__name__} - {self.host_name.value}"
     
     def setup_transaction(self, routes:list[list[str]], client_ip:str) -> TransactionProtocolState:
-        print('comeco')
+        
         print(routes)
         timestamp = self.clock.increment_clock(self.host_id.value)
         transaction_id = (self.host_ip+str(datetime.datetime.now())+client_ip+str(timestamp)).encode()
         transaction_id = sha256(transaction_id).hexdigest()
 
         transaction_state  = TransactionProtocolState(coordinator=self.host_name.value, transaction_id=transaction_id, timestamp=timestamp, intentions={})
-        print(transaction_state.to_request_msg)
         
-        print('estado')
+        
         
         for route in routes:
             participant:str = route[2]
@@ -33,17 +32,16 @@ class TransationCoordinator(TwoPhaseCommitNode):
                 transaction_state.intentions[participant].append((route[0], route[1]))
             else:
                 transaction_state.intentions[participant] = [(route[0], route[1])]
-            print(transaction_state.intentions)
             
-        print('pego participantes')
+            
+        
         for participant in transaction_state.participants:
             transaction_state.preparedToCommit[participant] = None
             transaction_state.done[participant] = None
 
-        print('setta tudo pra none')
         transaction_state.status = TransactionStatus.PREPARE
 
-        print('retorna')
+        
         return transaction_state
 
 
@@ -52,19 +50,19 @@ class TransationCoordinator(TwoPhaseCommitNode):
         print(transaction.intentions)
         self.db_handler.insert_data(transaction.to_db_entry(), CollectionsName.LOG.value)
         self.logger.info(f'Transaction {transaction.transaction_id} initiated')
-        print('pego as coisas do prepare do DB')
+        
         for participant in transaction.participants:
             try:
                 if participant != self.host_name.value:
                     response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/newtransaction', json=transaction.to_request_msg(participant), headers={"Content-Type": "application/json"}, timeout=10)
-                    print('ta num for doido')
+                    
                     transaction.preparedToCommit[participant] = True if response.json().get('msg') == TransactionStatus.READY.value else False
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
-                print('caiu no except') 
+
                 transaction.preparedToCommit[participant] = False 
         
         self.logger.info(f"{self.host_name} send PREPARE request to participants of transaction {transaction.transaction_id}")
-        print('nem sei o que faz')
+        
         if self.host_name.value in transaction.participants:
             for route in transaction.intentions[self.host_name.value]: #locking routes
                 self.graph.path_locks[route].acquire()
@@ -72,7 +70,6 @@ class TransationCoordinator(TwoPhaseCommitNode):
             for route in transaction.intentions[self.host_name.value]: #checking if there are sits available
                 if self.graph.graph[route[0]][route[1]]['sits'] == 0:
                     transaction.preparedToCommit[self.host_name.value] = False
-                    print('caiu no break')
                     break
 
             else:
@@ -88,7 +85,6 @@ class TransationCoordinator(TwoPhaseCommitNode):
             if self.host_name.value in transaction.participants:
                 self.__commit_local_transaction(transaction)
                 transaction.done[self.host_name.value] = True
-            print('entrou no todos')   
         else:
             transaction.status = TransactionStatus.ABORTED
             self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
@@ -96,15 +92,13 @@ class TransationCoordinator(TwoPhaseCommitNode):
             if self.host_name.value in transaction.participants:           
                 for route in transaction.intentions[self.host_name.value]: #unlocking routes
                     self.graph.path_locks[route].release()
-            print('nao entrou no todos')   
+
         for participant in transaction.participants:
             try:
-                print('tomada de decisao')   
                 if participant != self.host_name.value:
                     response = requests.post(f'http://{SERVERIP[participant]}:{SERVERPORT[participant]}/committransaction', json={'transaction_id': transaction.transaction_id, 'decision': transaction.status.value}, headers={"Content-Type": "application/json"}, timeout=30)
                     transaction.done[participant] = True if response.json().get('msg')== TransactionStatus.DONE.value else False
             except (ConnectionAbortedError, ConnectionRefusedError, ConnectionError, requests.Timeout, TimeoutError, requests.ConnectionError) as err:
-                print('caiu no except')   
                 pass
 
         

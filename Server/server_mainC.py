@@ -87,7 +87,6 @@ def  new_transaction():
         pass
     
 
-   
 @app.route('/committransaction', methods=['POST'])
 def  commit_transaction():
     global tm, requests_queue, queue_lock, node_info
@@ -117,20 +116,6 @@ def  commit_transaction():
         return {'id':transaction.transaction_id,'msg': result}, 200
     except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
         pass
-'''
-@app.route('/notfinished')
-def not_finish():
-    rq = request.get_json()
-    whoisme = rq['whoIsMe']
-    trans_id = rq['id']
-    msg = rq['msg']
-
-    #se camila fizer
-
-    return {'id':'transid', msg:'do'},200 if 'algo' else  {'id':'transid', 'msg':'not ok'}, 200
-
-
-'''
 
 @app.route('/updateroute', methods=['POST'])
 def update_route():
@@ -158,88 +143,114 @@ def update_route(route, peer, msg):
     except KeyError:
         node_info.graph.graph[u][v]['company'][peer] = msg
         node_info.graph.update_global_edge_weight(route)
-
-def process_client(client: ClientHandler):
-    global requests_queue, node_info, tc
-    request:Request = client.receive_pkt()
-    
-    if not request:
-        client.conn.close()
-        return
-    
-    try:
-        response:Response = Response()
-        type = ConstantsManagement(request.rq_type).name
-
-        # Autenticação do token
-        if type != "CREATE_USER" and type != "GETTOKEN":
-            client.auth_token(node_info.db_handler,request.client_token)
         
-        #Seleção do tratamento adequadoda requisição
-        match type:
-            case "CREATE_USER":
-                response.data = client.create_user(request.rq_data, node_info.db_handler) # type: ignore
-                if response.data:
-                    response.status = ConstantsManagement.OK
-                    response.rs_type = ConstantsManagement.TOKEN_TYPE
-                else:
-                    response.status = ConstantsManagement.OPERATION_FAILED
-                    response.rs_type = ConstantsManagement.NO_DATA_TYPE
-            case "GETTOKEN":
-                print('connected')
-                response.data = client.get_token(email=request.rq_data, db_handler=node_info.db_handler) # type: ignore
-                response.status = ConstantsManagement.OK
-                response.rs_type = ConstantsManagement.TOKEN_TYPE
-            
-            case "GETROUTES":
-                response.data = node_info.graph.search_route(request.rq_data['match'], request.rq_data['destination']) # type: ignore
-
-                if response.data:
-                    response.status = ConstantsManagement.OK
-                    response.rs_type = ConstantsManagement.ROUTE_TYPE
-                else:
-                    response.status = ConstantsManagement.NOT_FOUND
-                    response.rs_type = ConstantsManagement.NO_DATA_TYPE
-            
-            case "BUY":
-                transaction = tc.setup_transaction(request.rq_data, str(client.addr[0]))
-                finish_event = Event()
-
-                heap_entry = ((transaction,node_info.host_name.value, datetime.now()), (finish_event, tc.prepare_transaction))
-                with queue_lock:
-                    heappush(requests_queue, heap_entry)
-                    
-                finish_event.wait()
-
-                with results_lock:
-                    result = batch_execution_results.pop(transaction.transaction_id)
-
-                if result == "DONE":
-                    response.status = ConstantsManagement.OK
-                    response.rs_type = ConstantsManagement.TICKET_TYPE
-                    response.data = Ticket(request.client_token, request.rq_data).to_json()
-
-                    node_info.db_handler.insert_data(response.data, CollectionsName.TICKET.value)
-
-                else:
-                    response.status = ConstantsManagement.OPERATION_FAILED
-                    response.rs_type = ConstantsManagement.NO_DATA_TYPE
-                    response.data = None
-            
-            case "GETTICKETS":
-                response.data = client.get_tickets(request.client_token, node_info.db_handler)
-
-                if response.data:
-                    response.status = ConstantsManagement.OK
-                    response.rs_type = ConstantsManagement.TICKET_TYPE
-                else:
-                    response.status = ConstantsManagement.NOT_FOUND
-                    response.rs_type = ConstantsManagement.NO_DATA_TYPE
-            
-            case _: #tipo de requisição inválido
-                raise ValueError(f"[SERVER] {client.addr} No request type named {request.rq_type}")
-
     
+
+@app.route('/createuser', methods=['POST'])
+def create_user():
+    global node_info, requests_queue, tc
+    rq = request.get_json()
+    response = Response()
+    try:
+        email = rq['email']
+        response.data = ClientHandler(1,1).create_user(email, node_info.db_handler)
+        print(response.to_json())
+        if response.data:
+            response.status = ConstantsManagement.OK
+            response.rs_type = ConstantsManagement.TOKEN_TYPE
+        else:
+            response.status = ConstantsManagement.OPERATION_FAILED
+            response.rs_type = ConstantsManagement.NO_DATA_TYPE
+
+    except (KeyError, ValueError) as err: #parâmetros inválidos
+        response.status = ConstantsManagement.NOT_FOUND if err == KeyError else ConstantsManagement.OPERATION_FAILED
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
+
+    return {'type':response.rs_type.value, 'data':response.data, 'status':response.status.value},200
+
+@app.route('/gettoken', methods=['POST'])
+def get_token():
+    global node_info, requests_queue, tc
+    rq = request.get_json()
+    try:
+        response = Response()
+        response.data = ClientHandler(1,1).get_token(email=rq['email'], db_handler=node_info.db_handler) # type: ignore
+        response.status = ConstantsManagement.OK
+        response.rs_type = ConstantsManagement.TOKEN_TYPE
+    except (KeyError, ValueError) as err: #parâmetros inválidos
+        response.status = ConstantsManagement.NOT_FOUND if err == KeyError else ConstantsManagement.OPERATION_FAILED
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
+
+    return {'type':response.rs_type.value, 'data':response.data, 'status':response.status.value},200
+
+@app.route('/getroute', methods=['POST'])
+def get_route():
+    global node_info, requests_queue, tc
+    response = Response()
+    try:
+        rq = request.get_json()
+        ClientHandler(1,1).auth_token(node_info.db_handler,rq['token'])
+        response.data = node_info.graph.search_route(rq['match'], rq['destination']) # type: ignore
+
+        if response.data:
+            response.status = ConstantsManagement.OK
+            response.rs_type = ConstantsManagement.ROUTE_TYPE
+        else:
+            response.status = ConstantsManagement.NOT_FOUND
+            response.rs_type = ConstantsManagement.NO_DATA_TYPE
+
+    except InvalidTokenException: #autenticação do token falhou
+        response.status = ConstantsManagement.INVALID_TOKEN
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
+    
+    except (KeyError, ValueError) as err: #parâmetros inválidos
+        response.status = ConstantsManagement.NOT_FOUND if err == KeyError else ConstantsManagement.OPERATION_FAILED
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
+
+    return {'type':response.rs_type.value, 'data':response.data, 'status':response.status.value},200
+
+@app.route('/buy', methods=['POST'])
+def buy():
+    global node_info, requests_queue, tc
+    rq = request.get_json()
+    ip = rq['ip']
+    response = Response()
+    try:
+        ClientHandler(1,1).auth_token(node_info.db_handler,rq['token'])
+
+        transaction = tc.setup_transaction(rq['routes'], ip)
+        finish_event = Event()
+
+        
+
+        print(transaction.intentions)
+
+        heap_entry = ((transaction,node_info.host_name.value, datetime.now()), (finish_event, tc.prepare_transaction))
+        with queue_lock:
+            heappush(requests_queue, heap_entry)
+            
+        
+        finish_event.wait()
+
+        with results_lock:
+            result = batch_execution_results.pop(transaction.transaction_id)
+
+        
+        if result == "DONE":
+            response.status = ConstantsManagement.OK
+            response.rs_type = ConstantsManagement.TICKET_TYPE
+            response.data = Ticket(rq['token'], rq['routes']).to_json()
+
+            node_info.db_handler.insert_data(response.data, CollectionsName.TICKET.value)
+
+        else:
+            response.status = ConstantsManagement.OPERATION_FAILED
+            response.rs_type = ConstantsManagement.NO_DATA_TYPE
+            response.data = None
     except InvalidTokenException: #autenticação do token falhou
         response.status = ConstantsManagement.INVALID_TOKEN
         response.data = None
@@ -250,18 +261,35 @@ def process_client(client: ClientHandler):
         response.data = None
         response.rs_type = ConstantsManagement.NO_DATA_TYPE
 
-    response.status = response.status.value
-    response.rs_type = response.rs_type.value
+    return {'type':response.rs_type.value, 'data':response.data, 'status':response.status.value},200
+
+@app.route('/gettickets', methods=['POST'])
+def get_tickets():
+    global node_info, requests_queue, tc
+    rq = request.get_json()
+    response = Response()
+    try:
+        ClientHandler(1,1).auth_token(node_info.db_handler,rq['token'])
+
+        response.data = ClientHandler(1,1).get_tickets(rq['token'], node_info.db_handler)
+
+        if response.data:
+            response.status = ConstantsManagement.OK
+            response.rs_type = ConstantsManagement.TICKET_TYPE
+        else:
+            response.status = ConstantsManagement.NOT_FOUND
+            response.rs_type = ConstantsManagement.NO_DATA_TYPE
+    except InvalidTokenException: #autenticação do token falhou
+        response.status = ConstantsManagement.INVALID_TOKEN
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
     
-    #Envio da resposta
-    client.send_pkt(response)
-    client.conn.close()
+    except (KeyError, ValueError) as err: #parâmetros inválidos
+        response.status = ConstantsManagement.NOT_FOUND if err == KeyError else ConstantsManagement.OPERATION_FAILED
+        response.data = None
+        response.rs_type = ConstantsManagement.NO_DATA_TYPE
     
-    return
-
-
-
-
+    return {'type':response.rs_type.value, 'data':response.data, 'status':response.status.value},200
 
 def socket_client_handler():
     global node_info
@@ -274,7 +302,7 @@ def socket_client_handler():
                 (conn, client) = socket_manager.server_socket.accept()
                 new_client = ClientHandler(conn, client)
                 print('connected')
-                exec.submit(process_client, new_client)
+                #exec.submit(process_client, new_client)
             except socket.error as er:
                 node_info.logger.error(f"Error accepting new connection. Error: {er} Retrying...\n")
             except KeyboardInterrupt:
@@ -285,16 +313,20 @@ def batch_executor():
 
     with ThreadPoolExecutor(max_workers=1) as exec:
         while True:
+            
             with queue_lock:
+                
                 if len(requests_queue) == 0:
                     continue
+                
                 heapify(requests_queue)
                 keys, data = heappop(requests_queue)
+                
                 transaction, server, timestamp = keys
                 event, task = data
-
+                
                 future = exec.submit(task, transaction)
-
+                
                 wait([future])
 
                 result = future.result()
@@ -303,60 +335,6 @@ def batch_executor():
                 
                 event.set()
 
-
-'''
-def batch_executor():
-    global node_info, tc, requests_queue, batch_execution_results
-
-
-    
-    with ThreadPoolExecutor(max_workers=5) as exec:    
-        while True:
-            with queue_lock:
-
-                if len(requests_queue) == 0:
-                    sleep(1)
-                    continue
-            
-                heapify(requests_queue)
-                batch = []
-                routes_in_batch = set()
-
-                for i in range(len(requests_queue)):
-                    
-                    keys, data = heappop(requests_queue)
-                    transaction, server, timestamp = keys
-                    event, task = data
-                
-                    if transaction.__class__ == Transaction and routes_in_batch.isdisjoint(transaction.intentions):
-                        routes_in_batch = routes_in_batch.union(set(transaction.intentions))
-                        batch.append((transaction, task, event))
-
-                    elif transaction.__class__ == TransactionProtocolState:
-                        if routes_in_batch.isdisjoint(transaction.intentions[node_info.host_name.value]):
-                            routes_in_batch = routes_in_batch.union(set(transaction.intentions[node_info.host_name.value]))
-                            batch.append((transaction, task, event))
-                        else:
-                            heappush(requests_queue, (keys, data))
-
-                    else:
-                        heappush(requests_queue, (keys, data))
-                    
-                    if len(batch) == 5:
-                        break
-            
-            print('loop')
-            futures = {}
-            for request in batch:
-                futures[exec.submit(request[1], request[0])] = (request[0].transaction_id, request[2])
-
-            for future in as_completed(futures):
-                result = future.result()
-                with results_lock:
-                    batch_execution_results[futures[future][0]] = result
-                futures.get(future)[1].set()            
-
-'''
 def new_server_pool():
     global node_info
     up_links = {server: False for server in SERVERIP if server!=node_info.host_name.value}
@@ -386,6 +364,15 @@ def new_server_pool():
         sleep(3)
 
 
+    
+            
+
+        
+
+
+
+
+
 if __name__ == "__main__":
     try:
         socket_listener_thread = Thread(target=socket_client_handler)
@@ -398,10 +385,10 @@ if __name__ == "__main__":
         new_server_connections.start()
 
         
-        app.run(host=SERVERIP[ServerName.C.value],  port=SERVERPORT[ServerName.C.value])
+        app.run(host=SERVERIP[ServerName.C.value],  port=SERVERPORT[ServerName.C.value], threaded=True)
+    except KeyboardInterrupt:    
         exit(-1)
     finally:
         socket_listener_thread.join()
         batch_executor_thread.join()
         pass
-

@@ -31,7 +31,7 @@ class RoutesGraph:
                 u , data = edge.popitem()
                 v, attrs = data.popitem()
                 self.path_locks[(u,v)] = Lock()
-                attrs['weight'] = attrs['globalWeight']
+                attrs['globalWeight'] = attrs['weight']
                 attrs["company"] = {server_name: attrs['weight']}
                 new_graph.add_edge(u,v,**attrs)
 
