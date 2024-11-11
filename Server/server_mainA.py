@@ -537,21 +537,21 @@ def new_server_pool():
 
 if __name__ == "__main__":
     try:
-        # socket_listener_thread = Thread(target=socket_client_handler)
+        socket_listener_thread = Thread(target=socket_client_handler)
         batch_executor_thread = Thread(target=batch_executor)
         new_server_connections = Thread(target=new_server_pool, daemon=True)
         
 
-        # socket_listener_thread.start()
+        socket_listener_thread.start()
         batch_executor_thread.start()
         new_server_connections.start()
 
         
-        app.run(host=SERVERIP[ServerName.A.value],  port=SERVERPORT[ServerName.A.value], debug=True)
+        app.run(host=SERVERIP[ServerName.A.value],  port=SERVERPORT[ServerName.A.value])
     except KeyboardInterrupt:    
         exit(-1)
     finally:
-        # socket_listener_thread.join()
+        socket_listener_thread.join()
         batch_executor_thread.join()
         pass
 

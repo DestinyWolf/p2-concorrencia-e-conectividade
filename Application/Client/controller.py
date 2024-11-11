@@ -45,7 +45,7 @@ def buying(routes: list, client:ClientSocket):
     for fligth in routes:
         route = utils.Route()
         route.from_string(fligth)
-        buy_request.rq_data.append((route.match, route.destination))
+        buy_request.rq_data.append((route.match, route.destination, route.company))
 
     response = send_request(buy_request.to_json(), client)
 

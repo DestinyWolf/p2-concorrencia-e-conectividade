@@ -22,9 +22,7 @@ class Route:
         return {'match': self.match, 'destination': self.destination, 'sits': self.sits, 'id': self.id, 'company':self.company}
     
     def from_string(self, data):
-        self.match = data['match']
-        self.destination = data['destination']
-        self.sits = data['sits']
-        self.id = data['id']
-        self.company = data['company']
+        self.match = data[0]
+        self.destination = data[1]
+        self.company = data[2]
 

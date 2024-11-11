@@ -16,7 +16,6 @@ class ClientSocket:
         self.addr = (self.ip, self.port)
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.settimeout(10)
-        self.client_socket.settimeout(30)
 
         try:
             self.client_socket.connect(self.addr)

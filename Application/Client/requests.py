@@ -100,7 +100,7 @@ class Ticket:
 #   @param: dict contendos novos valores dos atributos
 ##
     def from_json(self, values):
-        self.email = values['email']
+        self.email = values['token']
         self.timestamp = datetime.datetime.strptime(values['timestamp'], '%d/%m/%Y %H:%M:%S')
         self.routes = values['routes']
 

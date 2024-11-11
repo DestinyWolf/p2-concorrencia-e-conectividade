@@ -1,4 +1,5 @@
 from enum import Enum
+from utils.socketCommunicationProtocol import ConstantsManagement as cm
 
 NODES_COUNT = 3
 

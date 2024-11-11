@@ -77,8 +77,8 @@ class TransationCoordinator(TwoPhaseCommitNode):
 
             else:
                 transaction.preparedToCommit[self.host_name.value] = True
-        print('atualiza algo')
-        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry(), )
+        
+        self.db_handler.update_data_by_filter(CollectionsName.LOG.value, {'_id': transaction.transaction_id}, transaction.to_db_entry())
 
         if all(transaction.preparedToCommit.values()):
             transaction.status = TransactionStatus.COMMIT

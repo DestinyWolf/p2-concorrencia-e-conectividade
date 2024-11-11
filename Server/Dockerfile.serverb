@@ -2,7 +2,7 @@
 FROM python:3.12
 
 #deixa exposta a porta 8000
-EXPOSE 5000
+EXPOSE 5001
 
 #diretorio de trabalho
 WORKDIR /Server
@@ -20,4 +20,4 @@ RUN pip install networkx
 RUN pip install pymongo
 
 #rodar o cliente na inicialização do container
-CMD ["python", "-m", "Server.serverA"]
+CMD ["python", "./server_mainB.py"]
