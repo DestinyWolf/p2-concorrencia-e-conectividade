@@ -16,24 +16,35 @@ from datetime import *
 from heapq import *
 import requests
 from utils.customExceptions import *
+
+#Parâmetros da aplicação flask
 app = Flask(__name__)
 CORS(app)
 
+#Classes de gerenciamento do servidor
 node_info = TwoPhaseCommitNode(ServerIds.C, ServerName.C)
 tc = TransationCoordinator(node_info.host_id, node_info.host_name)
 tm = TransactionManager(node_info.host_id, node_info.host_name)
 
+#Fila de requisições
 queue_lock = Lock()
 requests_queue = []
 
+#Lista de resultados das requisições
 results_lock = Lock()
 batch_execution_results = {}
 
-## Flask App Endpoints ##
+
+## 
+# Flask App Endpoints 
+##
+
+## Home endpoint
 @app.route('/')
 def home():
     return {'msg':'working'}
 
+## Endpoint utilizado para verificar o status de conexão do servidor
 @app.route('/serverstatus')
 def new_server(): 
     try:   
@@ -42,7 +53,7 @@ def new_server():
         pass
 
 
-#endpoint para a lista de adjacencias, retorna toda a lista de adjacencias de uma companhia
+## Endpoint para solicitar a lista de adjacências do servidor
 
 @app.route('/getgraph')
 def get_graph():
@@ -53,6 +64,7 @@ def get_graph():
         pass
 
 
+## Endpoint da primeira fase do protocolo 2pc -> requisição 'canCommit'
 @app.route('/newtransaction', methods=['POST'])
 def  new_transaction():
     global tm, requests_queue, queue_lock, node_info
@@ -67,17 +79,19 @@ def  new_transaction():
 
     transaction = Transaction(coordinator, id, participants,intentions, timestamp)
 
-
+    #Flag para sincronização com a execução da threadpool
     finish_event = Event()
 
-    
+    #Entrada de dados para a heap
     heap_entry = ((transaction,coordinator, datetime.now()), (finish_event, tm.handle_prepare_RPC))
     
     with queue_lock:
         heappush(requests_queue, heap_entry)
-        
+
+    #Aguardando a execução da requisição ser finalizada    
     finish_event.wait()
 
+    #Resgata resultados da lista de resultados
     with results_lock:
         result = batch_execution_results.pop(transaction.transaction_id)
 
@@ -87,7 +101,7 @@ def  new_transaction():
         pass
     
 
-   
+## Endpoint para a segunda fase do 2pc -> 'doCommit
 @app.route('/committransaction', methods=['POST'])
 def  commit_transaction():
     global tm, requests_queue, queue_lock, node_info
@@ -101,37 +115,29 @@ def  commit_transaction():
     transaction:Transaction = Transaction()
     transaction.load_transaction_from_db(id, node_info.db_handler)
     transaction.decision = decision
+
+    #Flag para sincronização com a execução da threadpool
     finish_event = Event()
 
+    #Entrada de dados para a heap  
     task = tm.handle_commit_RPC if decision == TransactionStatus.COMMIT.value else tm.handle_abort_RPC
     heap_entry = ((transaction,transaction.coordinator, datetime.now()), (finish_event, task))
     
     with queue_lock:
         heappush(requests_queue, heap_entry)
-        
+
+    #Aguardando a execução da requisição ser finalizada      
     finish_event.wait()
 
+    #Resgata resultados da lista de resultados
     with results_lock:
         result = batch_execution_results.pop(transaction.transaction_id)
     try:
         return {'id':transaction.transaction_id,'msg': result}, 200
     except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
         pass
-'''
-@app.route('/notfinished')
-def not_finish():
-    rq = request.get_json()
-    whoisme = rq['whoIsMe']
-    trans_id = rq['id']
-    msg = rq['msg']
 
-    #se camila fizer
-
-    return {'id':'transid', msg:'do'},200 if 'algo' else  {'id':'transid', 'msg':'not ok'}, 200
-
-
-'''
-
+## Endpoint utilizado para atualizar a disponibilidade de uma rota
 @app.route('/updateroute', methods=['POST'])
 def update_route():
     global node_info
@@ -140,7 +146,7 @@ def update_route():
 
     whoisme = rq['whoIsMe']
     route= tuple(rq['routeToUpdate'])
-    msg = rq['msg']
+    msg = rq['msg'] #1-> dsponivel  999->não disponivel
     
     update_route(route, whoisme, msg)
     try:
@@ -148,6 +154,9 @@ def update_route():
     except (ConnectionAbortedError, ConnectionError, ConnectionRefusedError, requests.Timeout):
         pass
 
+##
+# Função auxiliar para a atualização da rota solicitada
+##
 def update_route(route, peer, msg):
     global node_info
     u,v=route
@@ -159,6 +168,12 @@ def update_route(route, peer, msg):
         node_info.graph.graph[u][v]['company'][peer] = msg
         node_info.graph.update_global_edge_weight(route)
 
+
+
+##
+#   @brief: rotina realizada pela ThreadPoolExecutor
+#   @param: client: instância da classe ClientHandler
+##
 def process_client(client: ClientHandler):
     global requests_queue, node_info, tc
     request:Request = client.receive_pkt()
@@ -261,7 +276,9 @@ def process_client(client: ClientHandler):
 
 
 
-
+##
+#   @brief: rotina realizada pela thread de gerenciamento do socket
+##
 
 def socket_client_handler():
     global node_info
@@ -357,6 +374,10 @@ def batch_executor():
                 futures.get(future)[1].set()            
 
 '''
+
+##
+#   @brief: rotina utilizada para atualização do estado de link entre os servidores
+##
 def new_server_pool():
     global node_info
     up_links = {server: False for server in SERVERIP if server!=node_info.host_name.value}
@@ -386,22 +407,26 @@ def new_server_pool():
         sleep(3)
 
 
-if __name__ == "__main__":
-    try:
-        socket_listener_thread = Thread(target=socket_client_handler)
-        batch_executor_thread = Thread(target=batch_executor)
-        new_server_connections = Thread(target=new_server_pool, daemon=True)
-        
 
-        socket_listener_thread.start()
-        batch_executor_thread.start()
-        new_server_connections.start()
+##
+#   Inicialização das threads e do flask app
+##
 
-        
-        app.run(host=SERVERIP[ServerName.C.value],  port=SERVERPORT[ServerName.C.value])
-        exit(-1)
-    finally:
-        socket_listener_thread.join()
-        batch_executor_thread.join()
-        pass
+try:
+    socket_listener_thread = Thread(target=socket_client_handler)
+    batch_executor_thread = Thread(target=batch_executor)
+    new_server_connections = Thread(target=new_server_pool, daemon=True)
+    
+
+    socket_listener_thread.start()
+    batch_executor_thread.start()
+    new_server_connections.start()
+
+    
+    app.run(host=SERVERIP[ServerName.C.value],  port=SERVERPORT[ServerName.C.value])
+    exit(-1)
+finally:
+    socket_listener_thread.join()
+    batch_executor_thread.join()
+    pass
 
