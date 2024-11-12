@@ -8,7 +8,7 @@ from hashlib import sha256
 
 
 ##
-#   @brief: Classe usada para o gerenciamento de constantes do protocolo
+#   @brief: Classe usada para o gerenciamento de constantes do protocolo utilizado entre cliente e servidor
 ##
 class ConstantsManagement(Enum):
     # Métodos de requisições
