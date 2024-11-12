@@ -90,7 +90,7 @@ class Response:
 
 
 ##
-#   @brief: Classe utilizada para armazenar o gerenciamento de passagens/tickets
+#   @brief: Classe utilizada para armazenar e gerenciar passagem/ticket
 ##
 class Ticket:
     #Mutex para acessar o arquivo de tickets
