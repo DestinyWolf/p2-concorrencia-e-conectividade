@@ -2,6 +2,10 @@ from utils.twoPhaseCommit import *
 from utils.database import *
 from database.mongoHandler import *
 
+
+##
+#   @brief: classe utilizada para o armazenar e gerenciar transacoes 
+##
 class Transaction():
     def __init__(self, coordinator:str=None, transaction_id:str=None, participants=None, intentions=None, timestamp=None):
         self.coordinator:str = coordinator
@@ -11,6 +15,11 @@ class Transaction():
         self.status:TransactionStatus = None
         self.timestamp = timestamp
 
+    ##
+    #   @brief: método utilizado para atualizar os atributos da instância com os dados recuperados do banco de dados
+    #   @param: transaction_id: id da transação a ser recuperada do BD
+    #   @param: db_handler: instância da classe MongoHandler
+    ##
     def load_transaction_from_db(self, transaction_id, db_handler:MongoHandler):
         restored_data = db_handler.get_data_by_filter({'_id': transaction_id}, CollectionsName.LOG.value)[0]
         self.transaction_id = transaction_id
@@ -20,6 +29,10 @@ class Transaction():
         self.status = TransactionStatus(restored_data['status'])
         self.timestamp = restored_data['timestamp']
     
+    ##
+    #   @brief: método utilizado para organizar os atributos da instância em um formato aceito pelo banco de dados 
+    #   @return: dicionário contendo todos dos atributos da intância
+    ##
     def to_db_entry(self) -> dict:
         return {'_id': self.transaction_id, 'coordinator': self.coordinator, 'participants': list(self.participants),
                 'intentions': self.intentions, 'status': self.status.value, 'timestamp': self.timestamp}
