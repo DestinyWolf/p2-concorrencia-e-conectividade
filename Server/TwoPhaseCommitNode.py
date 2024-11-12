@@ -8,7 +8,9 @@ from vector_clock import *
 from database.mongoHandler import *
 
 
-
+##
+#   @brief: classe utilizada para o armazenamento e gerenciamento das informações do servidor inserido no cluster
+##
 
 class TwoPhaseCommitNode():
     
