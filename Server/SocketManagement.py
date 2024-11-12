@@ -3,6 +3,10 @@ import socket
 import logging as log
 
 
+
+##
+#   @brief: Classes utilizada para o gerenciamento da conexão socket com o ciente
+##
 class SocketManager():
     def __init__(self, host_ip:str=None, host_port:int=8000):
         self.host_ip = socket.gethostbyname(socket.gethostname()) if host_ip is None else host_ip
