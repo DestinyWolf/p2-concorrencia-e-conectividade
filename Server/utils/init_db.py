@@ -4,6 +4,11 @@ from utils.database import CollectionsName
 from utils.twoPhaseCommit import ServerName
 
 
+##
+# Arquivo utilizado para carregar as informações dos grafos de cada servidor no banco de dados
+##
+
+
 handler = MongoHandler(CollectionsName.CONNECT_STRING.value, ServerName.A.value)
 
 with open("graph1.json", "r") as file:
