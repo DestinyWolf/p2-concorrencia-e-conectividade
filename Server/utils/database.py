@@ -2,7 +2,7 @@
 from enum import Enum
 
 ## 
-#   @brief: Classe utilizada para o gerenciamento dos arquivos utilizados no armazenamento de dados do servidor
+#   @brief: Classe utilizada para o gerenciamento das collections armazenadas no banco de dados
 #   @note: Extende a classe Enum
 ##
 class CollectionsName(Enum):
