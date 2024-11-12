@@ -16,7 +16,9 @@ class ClientHandler:
         self.addr = addr
     
     ##
-    #   @brief: Cria um novo usuário no sistema 
+    #   @brief: Cria um novo usuário no sistema
+    #   @param: email: email do cliente a ser cadastrado
+    #   @param: db_handler: instância da classe MongoHandler
     #   @return: token do novo usuário ou None caso a operação tenha falhado
     ##
     def create_user(self, email:str, db_handler:MongoHandler):
@@ -29,6 +31,8 @@ class ClientHandler:
 
     ##
     #   @brief: Busca o token de um usuário no sistema 
+    #   @param: email: email a ser buscado
+    #   @param: db_handler: instância da classe MongoHandler
     #   @return: token do usuário (str)
     #   @raises: KeyError caso o usuário não esteja cadastrado no sistema
     ##
@@ -45,8 +49,9 @@ class ClientHandler:
 ##
 #   @brief: Autentica o token passado como argumento
 #   @param: token - chave a ser autenticada
-#   @raises: FileNotFound caso o arquivo de usuários não seja encontrado
-#            InvalidToken caso o token não pertença a um usuário
+#   @param: db_handler: instância da classe MongoHandler
+#   @return: True caso o token não esteja cadastrado no banco de dados
+#   @raises: InvalidToken caso o token não pertença a um usuário
 ##
 
     def auth_token(self, db_handler: MongoHandler, token = None):
@@ -58,24 +63,17 @@ class ClientHandler:
                 raise InvalidTokenException()
         except InvalidTokenException:
             raise
-
-##
-#   @brief: Realiza a operação de compra de da lista de voos passadas
-#   @param: server_data - objeto do tipo ServerData
-#   @param: token - chave autenticada
-#   @param: routes - lista de voos a serem comprados
-#   @raises: FileNotFound caso o arquivo de usuários não seja encontrado
-#            
-##
     
 
     ##
     #   @brief: Realiza a busca de todos os tickets já emitidos a um cliente
     #   @param: token - chave de busca autenticada
+    #   @param: db_handler: instância da classe MongoHandler
+    #   @return: lista com as informações de todos os tickets. Caso nenhum seja encontrado, retorna None
     ##
         
     def get_tickets(self, token:str, db_handler:MongoHandler):
-        tickets = db_handler.get_data_by_filter({'_id': token}, CollectionsName.TICKET.value)
+        tickets = db_handler.get_data_by_filter({'token': token}, CollectionsName.TICKET.value)
         if tickets:
             del tickets[0]['_id']
             return tickets[0]
