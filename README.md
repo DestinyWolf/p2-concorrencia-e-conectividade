@@ -45,11 +45,10 @@ A API REST desenvolvida conta com 7 endpoints, que são métodos remotos. Tabela
 | Endpoint  | Parâmetros | Retorno | Finalidade |
 | ----- | ----- | ----- | :---- |
 |  / |  None |  msg:str | é o endpoint inicial da API, apenas informa sobre seu funcionamento |
-|  /newserver |  name:str; ip:str |  msg:str | endpoint utilizado para informar a todos os servidores ativos que há um novo servidor |
+|  /serverstatus |  None |  msg:str | endpoint utilizado para verirficar o status de um servidor, se ele esta ativo ou não |
 |  /getgraph |  None |  graph:json | endpoint utilizado para solicitar toda a lista de adjacências de um servidor |
 |  /newtransaction |  id:int data: dict time: array |  id:int msg:str | endpoint utilizado por um coordenador para informar o início de uma nova transação |
 |  /commitdecision |  id:int msg:str |  msg:str | endpoint utilizado por um coordenador para informar se o commit deve ser realizado ou abortado |
-|  /notfinished |  whoIsMe:str id:int msg:str |  id:int msg:str | endpoint utilizado em caso de não finalização de uma transação, seja por um coordenador ou por um participante |
 |  /updateroute |  whoIsMe:str routeToUpdate:tuple msg:str |  msg:str | endpoint utilizado para atualizar  uma rota, adicionar ou mudar sua disponibilidade no grafo |
 
 
