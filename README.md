@@ -1,3 +1,7 @@
+<div align="center"><h1>Sistema de venda de passagens aéreas distribuido</h1></div>
+
+---
+
 # **Introdução**
 
 A aviação civil brasileira tem vivenciado um crescimento acelerado, impulsionado por diversos fatores tais como a globalização, a melhor distribuição de renda e a oferta de passagens aéreas mais acessíveis (Oliveira;Oliveira;Grande,2015, Bielschowsky; Custódio, 2011).  A crescente demanda por voos, associada a integração de companhias aéreas e a personalização de serviços, exigem soluções tecnológicas robustas para atender às expectativas dos consumidores.  
@@ -15,7 +19,7 @@ Este trabalho está organizado da seguinte forma: na sessão 1 foi apresentado o
 O sistema projetado adota o modelo *peer-to-peer* (P2P), no qual cada nó atua como cliente e servidor simultaneamente permitindo o compartilhamento de recursos e serviços computacionais (Coulouris, 2013; Rocha et al., 2004).  Este paradigma, além de promover a autonomia de nós, garante a descentralização do armazenamento, a ausência de um único ponto de falha e a disponibilidade dos dados e serviços a qualquer ponto (Rocha et al., 2004).  
 
 A solução é composta por quatro entidades distintas: cliente, servidor,  interfaces de programação de aplicativos (APIs) e banco de dados. Os clientes são responsáveis por receber as entradas do usuário, formatá-las em um modelo válido de requisição, enviá-las ao servidor e, após, receber e processar as respostas e exibi-las ao usuário.   
-O servidor é responsável pelo recebimento e processamento de requisições advindas tanto de clientes como de outros servidores a partir de interfaces distintas. No primeiro caso, o servidor fornece operações de cadastro, login, busca de passagens e de bilhetes, e compra de passagens por meio do protocolo de comunicação implementado para o problema 1\. No segundo caso, o servidor  disponibiliza operações para a compra distribuída de trechos por meio da API desenvolvida. O servidor, adicionalmente, gerencia a base de dados associada. 
+O servidor é responsável pelo recebimento e processamento de requisições advindas tanto de clientes como de outros servidores a partir de interfaces distintas. No primeiro caso, o servidor fornece operações de cadastro, login, busca de passagens e de bilhetes, e compra de passagens por meio do protocolo de comunicação implementado por Pereira e Nascimento (2024). No segundo caso, o servidor  disponibiliza operações para a compra distribuída de trechos por meio da API desenvolvida. O servidor, adicionalmente, gerencia a base de dados associada. 
 
 O banco de dados encarrega-se do armazenamento das informações cruciais para o funcionamento dos serviços, tais como informações cadastrais dos clientes, informações sobre rotas, dados de emissão de bilhetes e registro de todas as transações sendo executadas.  
 
@@ -40,7 +44,7 @@ Fonte: Os autores
 
 ## **Protocolo de comunicação**
 
-A API REST desenvolvida conta com 7 endpoints, que são métodos remotos. Tabela 1 descreve quais os endpoints, seus parâmetros, seu retorno e suas finalidades.
+A API REST desenvolvida conta com 7 endpoints, que são métodos remotos. Tabela 1 descreve os endpoints e  seus respectivos parâmetros, retornos e finalidades.
 
 | Endpoint  | Parâmetros | Retorno | Finalidade |
 | ----- | ----- | ----- | :---- |
@@ -120,20 +124,22 @@ Fonte: Os autores
 
 Além do 2PC, o sistema implementa ainda o algoritmo de vetores lógico para a serialização do processamento de requisições localmente em cada nó, garantindo preferência sobre os trechos de uma rota ao cliente que comprou primeiro. O algoritmo de vetores lógicos, uma generalização dos relógios de Lamport, define que cada processo tem conhecimento dos contadores de todos os outros processos. Quando os processos se comunicam, os vetores são compartilhados e atualizados.(NATH, 2021\)  
 
-A atualização dos vetores relógio é feita por meio de comparações. Um vetor é dito maior que outro se, e somente se, todos os seus elementos forem maiores ou iguais aos elementos do outro vetor. Caso nenhum dos vetores satisfaça esta condição, os vetores são denominados concorrentes.(NATH, 2021\) No sistema desenvolvido, o contador de um servidor é incrementado a cada transação iniciada e/ou requisição enviada a outro servidor. 
+A atualização dos vetores relógio é feita por meio de comparações. Um vetor é dito maior que outro se, e somente se, todos os seus elementos forem maiores ou iguais aos elementos do outro vetor. Caso nenhum dos vetores satisfaça esta condição, os vetores são denominados concorrentes.(NATH, 2021\) No sistema desenvolvido, o contador de um servidor é incrementado a cada transação iniciada e atuaizado a cada transação recebida. 
 
 ## **Confiabilidade do sistema**
 
 Visando assegurar a confiabilidade da solução, foram implementadas rotinas de identificação e recuperação de falhas tanto no coordenador como nos participantes.  
 Em ambos os subsistemas, todas as alterações realizadas nos estados das transações são persistidas no banco de dados. Dessa forma, em caso de falha, os nós podem recuperar as informações das transações que estavam executando, garantindo a continuidade do serviço e a integridade dos dados.  
 
-O coordenador implementa a técnica de *timeout* para as solicitações de preparação de commit. Sendo assim, caso algum dos participantes não responda no tempo estabelecido, a transação é abortada, evitando longas esperas e bloqueio de recursos. Além disso, o coordenado identifica exceções e erros de conexão que podem ser gerados durante o envio de requisições. Caso a comunicação com um dos participantes seja encerrada durante a primeira fase, a trnsação é cancelada.
+O coordenador implementa a técnica de *timeout* para as solicitações de preparação de commit. Sendo assim, caso algum dos participantes não responda no tempo estabelecido, a transação é abortada, evitando longas esperas e bloqueio de recursos. Além disso, o coordenador identifica exceções e erros de conexão que podem ser gerados durante o envio de requisições. Caso a comunicação com um dos participantes seja encerrada durante a primeira fase, a transação é cancelada.
 
 ## **Roteamento de trechos**
 
 A fim de permitir a pesquisa e venda de rotas que incluem a oferta de trechos de diversas companhias aéreas, foi implementado um algoritmo baseado no protocolo de roteamento de estado de link (ou de enlace). No roteamento por estado de link, cada roteador (ou nó) mantém localmente uma cópia da topologia lógica completa da rede e, a partir desta, constroi a sua tabela de roteamento por meio do algoritmo de Dijkstra (Silva, 2023; Kompella, 2023). A construção da topologia é realizada por meio do algoritmo de inundação (Kompella, 2023). 
 
-No sistema desenvolvido, cada servidor mantém um mapa completo das conexões entre os destinos sobre o qual as requisições de consultas dos clientes são aplicadas. O grafo é construído a partir do algoritmo de inundação de forma que, a cada novo servidor adicionado ao cluster, ocorre o compartilhamento das informações dos trechos entre o novo servidor e todos os outros servidores anteriormente ativos. A partir deste compartilhamento, cada nó realiza a fusão do seu mapa com o novo grafo.  
+No sistema desenvolvido, cada servidor mantém um mapa completo das conexões entre os destinos sobre o qual as requisições de consultas dos clientes são aplicadas. O grafo é construído a partir do algoritmo de inundação de forma que, a cada nova conexão identificada, ocorre o compartilhamento das informações dos trechos entre o novo servidor e todos os outros servidores anteriormente ativos. A partir deste compartilhamento, cada nó realiza a fusão do seu mapa com o novo grafo.
+
+Cada servidor verifica, em intervalos de 3 segundos, o status da sua conexão com os outros servidores no cluster. Caso a conexão com um _peer_ seja perdida, o servido encarrega-se de remover de seu grafo todos os trechos pertencentes aos nó inativo.
 
 Com a implementação deste algoritmo, o sistema mantém uma representação unificada e consistente das rotas disponíveis, além de garantir que os usuários tenham acesso às informações mais atualizadas sobre as rotas.
 
@@ -141,13 +147,13 @@ Com a implementação deste algoritmo, o sistema mantém uma representação uni
 
 ## **Organização do projeto: Docker e documentação**
 
-A solução final desenvolvida consiste em uma API RESTful, que foi desenvolvida utilizando o framework de comunicação Flask. A API dispõe dos métodos remotos para o algoritmo de enlace, atualização do grafo e execução do 2PC. Cada servidor possui sua própria API, assim como seu banco de dados independente. Os bancos de dados foram implementados com o MongoDB, um modelo não relacional, escalável e que possui fácil integração com a linguagem Python.   
+A solução final desenvolvida consiste em uma API RESTful, implementada utilizando o framework de comunicação Flask na versão 3.0.3. A API dispõe dos métodos remotos para o algoritmo de enlace, atualização do grafo e execução do 2PC. Cada servidor possui sua própria API, assim como seu banco de dados independente. Os bancos de dados foram implementados com o MongoDB, um modelo não relacional, escalável e que possui fácil integração com a linguagem Python.   
 
-O banco de dados foi dividido em 5 coleções distintas, onde cada uma tem uma finalidade própria: logs, lista de adjacências, rotas, passagens e usuários. A fim de facilitar o gerenciamento das queries, foi implementada uma interface para os bancos de dados.  
+O banco de dados foi dividido em cinco coleções distintas, as quais possuem finalidades próprias. São elas: LOG, GRAPH (lista de adjacência e dados das rotas), TICKET e USER. A fim de facilitar o gerenciamento das queries, foi implementada uma interface para o acesso aos bancos de dados.  
 
-Com relação ao sistema do cliente, foi mantida toda a implementação do problema 1, com a única e exclusiva alteração sendo a adição do campo que mostra a qual companhia um trecho pertence.  
+Com relação ao sistema do cliente, foi mantida toda a implementação realizada por Nascimento e Pereira (2024), com a única e exclusiva alteração sendo a adição do campo que mostra a qual companhia um trecho pertence.  
 
-O Docker foi utilizado no projeto para garantir sua portabilidade possibilitando a execução do software em qualquer computador que possua o software instalado. Contêineres distintos foram desenvolvidos para a aplicação do cliente, para o banco de dados do servidor e para hospedar o servidor propriamente dito. O banco de dados utiliza um container com a imagem do MongoDB Community, e o cliente e o servidor utilizam containers com uma imagem customizada do Python 3.12.4.  
+O Docker foi utilizado no projeto para garantir sua portabilidade possibilitando a execução do software em qualquer computador que possua o software instalado. Contêineres distintos foram desenvolvidos para a aplicação do cliente, para o banco de dados do servidor e para cada servidor do cluster. O banco de dados utiliza um container com a imagem do MongoDB Community, e o cliente e o servidor utilizam containers com uma imagem customizada do Python 3.12.4.  
 
 A documentação do código foi feita seguindo o padrão Doxygen. Mesmo o Python não oferecendo suporte nativo a esse tipo de comentário, ele foi adotado por se adaptar melhor à descrição de métodos, funções, classes, variáveis e constantes implementadas.
 
@@ -167,14 +173,13 @@ Após a identificação do problema, realizou-se a tentativa de uma compra por v
 
 # **Conclusões**
 
-O presente trabalho descreveu o processo de desenvolvimento de uma aplicação distribuída elencando seus desafios, soluções e decisões de projeto que culminaram no presente produto.  
-O sistema implementa a arquitetura *peer-to-peer* (P2P), que possibilitando a comunicação cliente-servidor e servidor-servidor. A comunicação entre cliente e servidor foi implementada por meio da API Socket Básica. Já para comunicação entre servidores foi implementada uma APIs com arquitetura *RESTful* e implementado o algoritmo *Two-Phase Commit* que permite a coordenação e o controle das transações distribuídas. O modelo implementado assegura a confiabilidade da aplicação distribuída e a consistência dos dados durante operações de venda e atualização dos grafos.   
+O presente trabalho descreveu o processo de desenvolvimento de uma aplicação distribuída elencando seus desafios, soluções e decisões de projeto que culminaram no produto final.  
+O sistema implementa a arquitetura *peer-to-peer*, possibilitando a comunicação entre cliente-servidor e servidor-servidor. A comunicação entre cliente e servidor foi implementada por meio da API Socket Básica. Por sua vez, para a comunicação entre servidores foi implementada uma API *RESTful*.
 
-Além disso, foi implementado um algoritmo baseado no estado de enlace (*link state*) para permitir a busca e venda de passagens oferecidas por todas as companhias do cluster a partir de qualquer servidor.  
+As compras de passagens com trehcos mistos foram implemntadas a partir do algoritmo *Two-Phase Commit* que permite a coordenação e o controle das transações distribuídas. O modelo implementado assegura a confiabilidade da aplicação distribuída e a consistência dos dados durante operações. Além disso, foi implementado um algoritmo baseado no estado de enlace (*link state*) para permitir a busca e venda de passagens oferecidas por todas as companhias do cluster a partir de qualquer servidor.  
 
-A solução desenvolvida conseguiu atingir todos os requisitos elencados com excelência assim como obter um desempenho robusto no geral. Para trabalhos futuros, sugere-se a implementação de mecanismos mais complexos para validação dos usuários, além da possível criação de uma interface gráfica que permita ao sistema se tornar mais amigável aos usuários. Além disso, recomenda-se a troca do framework Flask para outra tecnologia que lide com múltiplas requisições tais como o FastAPI ou Django.
+A solução desenvolvida conseguiu atingir todos os requisitos elencados. Devido a escolha do framework mensgeiro, o produto final não pode ser testado de forma robusta. Para trabalhos futuros, sugere-se a implementação de mecanismos mais complexos para validação dos usuários, além da criação de uma interface gráfica amigável aos usuários. Além disso, recomenda-se a troca do framework Flask para outra tecnologia que lide com múltiplas requisições, tais como o FastAPI ou Django,  e a implementação de rotinas de recuperação pós crashes (tanto no servidor como no participantes).
 
-# 
 
 # **Referências**
 
@@ -192,5 +197,7 @@ ROCHA, João et al. Peer-to-peer: Computação colaborativa na internet. In: **M
 
 SILVA, Acácio. **Capítulo 06: Roteamento e protocolos de roteamento**. Universidade de São Paulo, 2023\. Disponível em: \<https://lsi.usp.br/\~acacio/CCNA\_Cap06Mod02.pdf\>. Acesso em: 01 nov. 2024\.  
 STOIC PROGRAMMER. **The Two-Phase Commit Protocol: Ensuring Distributed Transaction Consistency**. Medium, 2022\. Disponível em: \<https://medium.com/@stoic-programmer/the-two-phase-commit-protocol-ensuring-distributed-transaction-consistency-46d0239761db\>. Acesso em: 01 nov. 2024\.  
+
+PERERIA, Camila Queiroz Boa Morte;NASCIMENTO, Maike de Oliveira. **Vendepass**. Github, 2024. Disponível em: https://github.com/camilaqPereira/p1-concorrencia-e-conectividade. Acesso em: 12 nov. 2024
 
 ZHOU, Kai. Tech Insights: **Two-Phase Commit Protocol for Distributed Transactions**. Medium, 2022\. Disponível em: \<https://alibaba-cloud.medium.com/tech-insights-two-phase-commit-protocol-for-distributed-transactions-ff7080eefe00\>. Acesso em: 01 nov. 2024\.
