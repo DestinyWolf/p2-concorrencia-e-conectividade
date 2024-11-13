@@ -89,7 +89,35 @@ O algoritmo 2PC foi projetado para funcionar em sistemas síncronos e não consi
 
 Embora proporcione uma alta consistência em sistemas distribuídos, o protocolo 2PC apresenta um overhead considerável ocasionado pela comunicação entre o coordenador e todos os participantes da transação. Esta sobrecarga impacta negativamente a performance do sistema. Além disso, o bloqueio de recursos durante a execução da transação pode prolongar significativamente o tempo de espera por recursos.(Coulouris,2013; Stoic Programmer, 2022\)  
 
-A escolha do algoritmo 2PC para o sistema de venda de passagens aéreas baseou-se na análise dos requisitos do sistema. Apesar de algoritmos de consenso como Raft e Paxos apresentarem maior disponibilidade e tolerância a falhas (ONGARO; OUSTERHOUT, 2014), o 2PC foi selecionado devido a necessidade de garantir uma alta consistência nas transações e evitar a venda duplicada de passagens.  
+A escolha do algoritmo 2PC para o sistema de venda de passagens aéreas baseou-se na análise dos requisitos do sistema. Apesar de algoritmos de consenso como Raft e Paxos apresentarem maior disponibilidade e tolerância a falhas (ONGARO; OUSTERHOUT, 2014), o 2PC foi selecionado devido a necessidade de garantir uma alta consistência nas transações e evitar a venda duplicada de passagens. Figura 3 e 4 apresentam, respectivamente, o fluxo da rotina implementada para o coordenador de uma transação e o fluxo da rotina implementada para os participantes de uma transação.
+
+<div align="center">
+  <figure>  
+    <img src="docs/coordinator-flow.png">
+    <figcaption>
+      <p align="center"> 
+
+**Figura 3** - Rotina implementada para o coordenador de uma transação  
+Fonte: Os autores
+
+</p>
+    </figcaption>
+  </figure>
+</div>
+
+<div align="center">
+  <figure>  
+    <img src="docs/manager-flow.png">
+    <figcaption>
+      <p align="center"> 
+
+**Figura 4** - Rotina implementada para o participante de uma transação  
+Fonte: Os autores
+
+</p>
+    </figcaption>
+  </figure>
+</div>
 
 Além do 2PC, o sistema implementa ainda o algoritmo de vetores lógico para a serialização do processamento de requisições localmente em cada nó, garantindo preferência sobre os trechos de uma rota ao cliente que comprou primeiro. O algoritmo de vetores lógicos, uma generalização dos relógios de Lamport, define que cada processo tem conhecimento dos contadores de todos os outros processos. Quando os processos se comunicam, os vetores são compartilhados e atualizados.(NATH, 2021\)  
 
@@ -97,14 +125,12 @@ A atualização dos vetores relógio é feita por meio de comparações. Um veto
 
 ## **Confiabilidade do sistema**
 
-Visando assegurar a confiabilidade da solução, foram implementadas rotinas de identificação e recuperação de falhas  tanto no coordenador como nos participantes.  
+Visando assegurar a confiabilidade da solução, foram implementadas rotinas de identificação e recuperação de falhas tanto no coordenador como nos participantes.  
 Em ambos os subsistemas, todas as alterações realizadas nos estados das transações são persistidas no banco de dados. Dessa forma, em caso de falha, os nós podem recuperar as informações das transações que estavam executando, garantindo a continuidade do serviço e a integridade dos dados.  
 
-O coordenador implementa a técnica de *timeout* para as solicitações de preparação de commit. Sendo assim, caso algum dos participantes não responda no tempo estabelecido, a transação é abortada, evitando longas esperas e bloqueio de recursos.  
+O coordenador implementa a técnica de *timeout* para as solicitações de preparação de commit. Sendo assim, caso algum dos participantes não responda no tempo estabelecido, a transação é abortada, evitando longas esperas e bloqueio de recursos. Além disso, o coordenado identifica exceções e erros de conexão que podem ser gerados durante o envio de requisições. Caso a comunicação com um dos participantes seja encerrada durante a primeira fase, a trnsação é cancelada.
 
-Por fim, os participantes implementaram um protocolo 2PC cooperativo. Dessa forma, em caso de falha do coordenador da transação, os participantes podem concluir transação, desde que todos tenham respondido à fase de preparação.
-
-## **Roteamento de rotas**
+## **Roteamento de trechos**
 
 A fim de permitir a pesquisa e venda de rotas que incluem a oferta de trechos de diversas companhias aéreas, foi implementado um algoritmo baseado no protocolo de roteamento de estado de link (ou de enlace). No roteamento por estado de link, cada roteador (ou nó) mantém localmente uma cópia da topologia lógica completa da rede e, a partir desta, constroi a sua tabela de roteamento por meio do algoritmo de Dijkstra (Silva, 2023; Kompella, 2023). A construção da topologia é realizada por meio do algoritmo de inundação (Kompella, 2023). 
 
@@ -130,7 +156,15 @@ A documentação do código foi feita seguindo o padrão Doxygen. Mesmo o Python
 
 Para a realização dos testes dos métodos da API, foi utilizado o Postman, uma ferramenta gratuita para a realização de testes em APIs REST. Todos os endpoints foram testados e os retornos foram os esperados pelo sistema, comprovando a eficácia e o completo funcionamento da API. 
 
-Para verificar o desempenho da solução desenvolvida, foi empregado um algoritmo de simulação envolvendo 300 terminais de clientes, distribuídos em 100 terminais para cada servidor. Os terminais realizaram simultaneamente a tentativa de comprar a mesma rota, uma passagem de Salvador até Belem, sendo esta uma rota mista onde, o trecho de Salvador até Fortaleza estava no servidor A, o trecho Fortaleza a Curitiba estava no servidor B e o trecho de Curitiba a Belem estava no servidor C. Nesta compra eram realizadas todas as etapas até a finalização de uma compra. Haviam 150 vagas disponíveis, sendo assim apenas metade dos terminais deveriam conseguir. Ao executar o algoritmo foi notado que as passagens estavam sendo abortadas, buscando compreender o motivo do mesmo, foi notado que se tratava de um problema no Flask, mais especificamente no momento de receber as chamadas. Indo mais a fundo na documentação, descobriu-se que se tratava de um problema do proprio flask, pois o mesmo não foi feito para ser utilizado em ambiente de produção, sendo assim, só conseguiria antedes apenas uma requisição por vez impossibilitando que os algoritmos implementados e a realização dos testes não acontecessem conforme o esperado. Após perceber esse problema, foi realizada a tentativa de uma compra unica, a mesma ocorreu com sucesso, sendo assim foi notado que o problema de fato estava no Flaks e não na implementação do sistema.
+Com o intuito de aferir o desempenho da solução desenvolvida, foi empregado um algoritmo de simulação envolvendo 300 terminais de clientes, distribuídos em 100 
+terminais para cada servidor. Os terminais realizaram simultaneamente a tentativa de comprar a mesma rota, uma passagem de Salvador até Belem, sendo esta 
+composta por três trechos distintos: o trecho de Salvador até Fortaleza pertencente ao servidor A e contendo 100 assentos disponíveis; o trecho Fortaleza a 
+Curitiba pertencente ao servidor B e contendo 150 assentos; e o trecho de Curitiba a Belém pertencente ao servidor C e contendo 150 assentos. Nesta compra, 
+foram realizadas todas as etapas até a finalização de uma compra. 
+
+Com apenas 100 vagas disponíveis, limite determinado pelo trecho com o menor número de assentos, apenas um terço dos terminais deveriam efetuar a compra. Ao executar o algoritmo, notou-se que todas as transações foram abortadas após um longo període de espera. Buscando compreender o motivo deste comportamento, todos os endpoints e funções foram testadas novamente. Como nenhum erro foi encontrado, o funcionamento do Socket e do framework Flask foram analisados. A partir desta análise, percebeu-se que o problema é ocasionado pelo gerenciamento de requisições do Flask. A versão do framework utilizada no projeto, por não ser própria para ambientes de produção, não consegue gerenciar múltiplas requisições simultaneamente, impossibilitando o correto funcionamento do algoritmo de transação distribuída implementado e, consequentimente, dos testes desenvolvidos.
+
+Após a identificação do problema, realizou-se a tentativa de uma compra por vez em cada um dos servidores, as quais foram concluídas com sucesso.
 
 # **Conclusões**
 
@@ -139,7 +173,7 @@ O sistema implementa a arquitetura *peer-to-peer* (P2P), que possibilitando a co
 
 Além disso, foi implementado um algoritmo baseado no estado de enlace (*link state*) para permitir a busca e venda de passagens oferecidas por todas as companhias do cluster a partir de qualquer servidor.  
 
-A solução desenvolvida conseguiu atingir todos os requisitos elencados com excelência assim como obter um desempenho robusto no geral. Para trabalhos futuros, sugere-se a implementação de mecanismos mais complexos para validação dos usuários, além da possível criação de uma interface gráfica que  permita ao sistema se tornar mais amigável aos usuários, outra possível melhoria seria a troca do framework flask para algum que consiga lidar com multiplas requisições como o fastAPI ou django.
+A solução desenvolvida conseguiu atingir todos os requisitos elencados com excelência assim como obter um desempenho robusto no geral. Para trabalhos futuros, sugere-se a implementação de mecanismos mais complexos para validação dos usuários, além da possível criação de uma interface gráfica que permita ao sistema se tornar mais amigável aos usuários. Além disso, recomenda-se a troca do framework Flask para outra tecnologia que lide com múltiplas requisições tais como o FastAPI ou Django.
 
 # 
 
